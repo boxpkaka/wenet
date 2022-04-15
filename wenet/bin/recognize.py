@@ -97,6 +97,10 @@ def get_args():
                         action='append',
                         default=[],
                         help="override yaml config")
+    parser.add_argument('--connect_symbol',
+                        default='',
+                        type=str,
+                        help='used to connect the output characters')
 
     args = parser.parse_args()
     print(args)
@@ -132,6 +136,7 @@ def main():
     test_conf['filter_conf']['min_output_input_ratio'] = 0
     test_conf['speed_perturb'] = False
     test_conf['spec_aug'] = False
+    test_conf['spec_sub'] = False
     test_conf['shuffle'] = False
     test_conf['sort'] = False
     if 'fbank_conf' in test_conf:
@@ -214,13 +219,13 @@ def main():
                     reverse_weight=args.reverse_weight)
                 hyps = [hyp]
             for i, key in enumerate(keys):
-                content = ''
+                content = []
                 for w in hyps[i]:
                     if w == eos:
                         break
-                    content += char_dict[w]
-                logging.info('{} {}'.format(key, content))
-                fout.write('{} {}\n'.format(key, content))
+                    content.append(char_dict[w])
+                logging.info('{} {}'.format(key, args.connect_symbol.join(content)))
+                fout.write('{} {}\n'.format(key, args.connect_symbol.join(content)))
 
 
 if __name__ == '__main__':

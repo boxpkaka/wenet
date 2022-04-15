@@ -5,15 +5,15 @@ Wenet 基于 pytorch 框架进行语音识别模型训练，而在使用训练�
 
 ## 使用docker启动语音识别服务
 
-最简单的使用 Wenet 的方式是通过官方提供的 docker 镜像 `mobvoiwenet/wenet:mini` 来启动服务。
+最简单的使用 Wenet 的方式是通过官方提供的 docker 镜像 `wenetorg/wenet:mini` 来启动服务。
 
 下面的命令先下载官方提供的预训练模型，并启动 docker 服务，加载模型，提供 websocket 协议的语音识别服务。
 ``` sh
 cd wenet/runtime/server/x86
-wget http://mobvoi-speech-public.ufile.ucloud.cn/public/wenet/aishell2/20210602_unified_transformer_server.tar.gz
-tar -xf 20210602_unified_transformer_server.tar.gz
-model_dir=$PWD/20210602_unified_transformer_server
-docker run --rm -it -p 10086:10086 -v $model_dir:/home/wenet/model mobvoiwenet/wenet:mini bash /home/run.sh
+wget https://wenet-1256283475.cos.ap-shanghai.myqcloud.com/models/aishell/20210601_u2%2B%2B_conformer_libtorch.tar.gz
+tar -xf 20210602_u2++_conformer_libtorch.tar.gz
+model_dir=$PWD/20210602_u2++_conformer_libtorch
+docker run --rm -it -p 10086:10086 -v $model_dir:/home/wenet/model wenetorg/wenet-mini:latest bash /home/run.sh
 ```
 
 `$model_dir` 是模型在本机的目录，将被映射到容器的 `/home/wenet/model` 目录，然后启动 web 服务。
@@ -51,8 +51,8 @@ mkdir build && cd build && cmake -DGRPC=ON .. && cmake --build .
 
 ``` sh
 # 当前目录为 wenet/runtime/server/x86
-wget http://mobvoi-speech-public.ufile.ucloud.cn/public/wenet/aishell2/20210602_unified_transformer_server.tar.gz
-tar -xf 20210602_unified_transformer_server.tar.gz
+wget https://wenet-1256283475.cos.ap-shanghai.myqcloud.com/models/aishell/20210601_u2%2B%2B_conformer_libtorch.tar.gz
+tar -xf 20210602_u2++_conformer_libtorch.tar.gz
 ```
 
 ## 本地wav文件识别
@@ -68,8 +68,7 @@ tar -xf 20210602_unified_transformer_server.tar.gz
 
 export GLOG_logtostderr=1
 export GLOG_v=2
-wget http://mobvoi-speech-public.ufile.ucloud.cn/public/wenet/test.wav
-wav_path=./test.wav
+wav_path=test.wav
 model_dir=./20210602_unified_transformer_server
 ./build/decoder_main \
     --chunk_size -1 \
@@ -118,8 +117,7 @@ model_dir=./20210602_unified_transformer_server
 ```sh
 export GLOG_logtostderr=1
 export GLOG_v=2
-wget http://mobvoi-speech-public.ufile.ucloud.cn/public/wenet/test.wav
-wav_path=./test.wav
+wav_path=test.wav
 ./build/websocket_client_main \
     --host 127.0.0.1 --port 10086 \
     --wav_path $wav_path 2>&1 | tee client.log
@@ -152,7 +150,7 @@ grep "Rescoring cost latency" server.log | awk '{sum += $NF}; END {print sum/NR}
 如果遇到问题比如无法编译，我们提供了 docker 镜像用于直接执行示例。需要先安装好 docker，运行如下命令，进入 docker 容器环境。
 
 ``` sh
-docker run --rm -it mobvoiwenet/wenet:v0.5.0 bash
+docker run --rm -it mobvoiwenet/wenet:latest bash
 ```
 
 该镜像包含了编译过程中所依赖的所有第三方库、编译好的文件和预训练模型。
