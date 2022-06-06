@@ -1,16 +1,25 @@
-// Copyright 2020 Mobvoi Inc. All Rights Reserved.
-// Author: binbinzhang@mobvoi.com (Binbin Zhang)
-//         di.wu@mobvoi.com (Di Wu)
+// Copyright (c) 2020 Mobvoi Inc (Binbin Zhang, Di Wu)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 
 #include <iomanip>
+#include <thread>
 #include <utility>
-
-#include "torch/script.h"
 
 #include "decoder/params.h"
 #include "frontend/wav.h"
 #include "utils/flags.h"
-#include "utils/log.h"
 #include "utils/string.h"
 #include "utils/timer.h"
 #include "utils/utils.h"
@@ -22,7 +31,7 @@ DEFINE_string(wav_scp, "", "input wav scp");
 DEFINE_string(result, "", "result output file");
 DEFINE_bool(continuous_decoding, false, "continuous decoding mode");
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, false);
   google::InitGoogleLogging(argv[0]);
 
@@ -51,27 +60,26 @@ int main(int argc, char *argv[]) {
   if (!FLAGS_result.empty()) {
     result.open(FLAGS_result, std::ios::out);
   }
-  std::ostream &buffer = FLAGS_result.empty() ? std::cout : result;
+  std::ostream& buffer = FLAGS_result.empty() ? std::cout : result;
 
   int total_waves_dur = 0;
   int total_decode_time = 0;
-  for (auto &wav : waves) {
+  for (auto& wav : waves) {
     wenet::WavReader wav_reader(wav.second);
+    int num_samples = wav_reader.num_samples();
     CHECK_EQ(wav_reader.sample_rate(), FLAGS_sample_rate);
 
     auto feature_pipeline =
         std::make_shared<wenet::FeaturePipeline>(*feature_config);
-    feature_pipeline->AcceptWaveform(std::vector<float>(
-        wav_reader.data(), wav_reader.data() + wav_reader.num_sample()));
+    feature_pipeline->AcceptWaveform(wav_reader.data(), num_samples);
     feature_pipeline->set_input_finished();
     LOG(INFO) << "num frames " << feature_pipeline->num_frames();
 
     wenet::AsrDecoder decoder(feature_pipeline, decode_resource,
                               *decode_config);
 
-    int wave_dur =
-        static_cast<int>(static_cast<float>(wav_reader.num_sample()) /
-                         wav_reader.sample_rate() * 1000);
+    int wave_dur = static_cast<int>(static_cast<float>(num_samples) /
+                                    wav_reader.sample_rate() * 1000);
     int decode_time = 0;
     std::string final_result;
     while (true) {
@@ -86,8 +94,7 @@ int main(int argc, char *argv[]) {
         LOG(INFO) << "Partial result: " << decoder.result()[0].sentence;
       }
 
-      if (FLAGS_continuous_decoding &&
-          state == wenet::DecodeState::kEndpoint) {
+      if (FLAGS_continuous_decoding && state == wenet::DecodeState::kEndpoint) {
         if (decoder.DecodedSomething()) {
           decoder.Rescoring();
           final_result.append(decoder.result()[0].sentence);
@@ -122,10 +129,9 @@ int main(int argc, char *argv[]) {
       buffer << wav.first << " " << final_result << std::endl;
     } else {
       buffer << "wav " << wav.first << std::endl;
-      auto &results = decoder.result();
-      for (auto &r : results) {
-        if (r.sentence.empty())
-          continue;
+      auto& results = decoder.result();
+      for (auto& r : results) {
+        if (r.sentence.empty()) continue;
         buffer << "candidate " << r.score << " " << r.sentence << std::endl;
       }
     }

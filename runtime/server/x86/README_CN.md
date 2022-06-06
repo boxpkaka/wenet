@@ -70,7 +70,7 @@ export GLOG_logtostderr=1
 export GLOG_v=2
 wav_path=test.wav
 model_dir=./20210602_unified_transformer_server
-./build/decoder_main \
+./build/bin/decoder_main \
     --chunk_size -1 \
     --wav_path $wav_path \
     --model_path $model_dir/final.zip \
@@ -81,7 +81,7 @@ model_dir=./20210602_unified_transformer_server
  * 使用`--wav_path`指定单个文件，一次识别单个wav文件。
  * 使用`--wav_scp`指定一个.scp格式的wav列表，一次识别多个wav文件。
 
-执行 `./build/decoder_main --help`  可以了解更多的参数意义。
+执行 `./build/bin/decoder_main --help`  可以了解更多的参数意义。
 
 ## 基于websocket的在线识别服务
 
@@ -97,7 +97,7 @@ model_dir=./20210602_unified_transformer_server
 export GLOG_logtostderr=1
 export GLOG_v=2
 model_dir=./20210602_unified_transformer_server
-./build/websocket_server_main \
+./build/bin/websocket_server_main \
     --port 10086 \
     --chunk_size 16 \
     --model_path $model_dir/final.zip \
@@ -118,8 +118,8 @@ model_dir=./20210602_unified_transformer_server
 export GLOG_logtostderr=1
 export GLOG_v=2
 wav_path=test.wav
-./build/websocket_client_main \
-    --host 127.0.0.1 --port 10086 \
+./build/bin/websocket_client_main \
+    --hostname 127.0.0.1 --port 10086 \
     --wav_path $wav_path 2>&1 | tee client.log
 ```
 
@@ -129,7 +129,7 @@ wav_path=test.wav
 
 注意 `--port` 需要设置为服务端使用的端口号。
 
-如果有两台机器，也可以在一台机器上运行服务端，在另一台机器运行客户端，此时 `--host` 要指定为服务端所在机器的可访问 ip。
+如果有两台机器，也可以在一台机器上运行服务端，在另一台机器运行客户端，此时 `--hostname` 要指定为服务端所在机器的可访问 ip。
 
 **网页版 websocket 客户端**
 

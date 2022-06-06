@@ -1,6 +1,18 @@
-// Copyright 2020 Mobvoi Inc. All Rights Reserved.
-// Author: binbinzhang@mobvoi.com (Binbin Zhang)
-//         di.wu@mobvoi.com (Di Wu)
+// Copyright (c) 2020 Mobvoi Inc (Binbin Zhang, Di Wu)
+//               2022 Binbin Zhang (binbzha@qq.com)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 
 #include "decoder/torch_asr_model.h"
 
@@ -13,12 +25,20 @@
 
 namespace wenet {
 
-void TorchAsrModel::Read(const std::string& model_path, const int num_threads) {
-  torch::jit::script::Module model = torch::jit::load(model_path);
-  model_ = std::make_shared<TorchModule>(std::move(model));
+void TorchAsrModel::InitEngineThreads(int num_threads) {
   // For multi-thread performance
   at::set_num_threads(num_threads);
+  // Note: Do not call the set_num_interop_threads function more than once.
+  // Please see https://github.com/pytorch/pytorch/blob/master/aten/src/ATen/
+  // ParallelThreadPoolNative.cpp#L54-L56
   at::set_num_interop_threads(1);
+  VLOG(1) << "Num intra-op threads: " << at::get_num_threads();
+  VLOG(1) << "Num inter-op threads: " << at::get_num_interop_threads();
+}
+
+void TorchAsrModel::Read(const std::string& model_path) {
+  torch::jit::script::Module model = torch::jit::load(model_path);
+  model_ = std::make_shared<TorchModule>(std::move(model));
   torch::NoGradGuard no_grad;
   model_->eval();
   torch::jit::IValue o1 = model_->run_method("subsampling_rate");
@@ -37,14 +57,12 @@ void TorchAsrModel::Read(const std::string& model_path, const int num_threads) {
   CHECK_EQ(o5.isBool(), true);
   is_bidirectional_decoder_ = o5.toBool();
 
-  LOG(INFO) << "Torch Model Info:";
-  LOG(INFO) << "\tsubsampling_rate " << subsampling_rate_;
-  LOG(INFO) << "\tright context " << right_context_;
-  LOG(INFO) << "\tsos " << sos_;
-  LOG(INFO) << "\teos " << eos_;
-  LOG(INFO) << "\tis bidirectional decoder " << is_bidirectional_decoder_;
-  LOG(INFO) << "\tnum intra-op threads " << at::get_num_threads();
-  LOG(INFO) << "\tnum inter-op threads " << at::get_num_interop_threads();
+  VLOG(1) << "Torch Model Info:";
+  VLOG(1) << "\tsubsampling_rate " << subsampling_rate_;
+  VLOG(1) << "\tright context " << right_context_;
+  VLOG(1) << "\tsos " << sos_;
+  VLOG(1) << "\teos " << eos_;
+  VLOG(1) << "\tis bidirectional decoder " << is_bidirectional_decoder_;
 }
 
 TorchAsrModel::TorchAsrModel(const TorchAsrModel& other) {
@@ -55,7 +73,7 @@ TorchAsrModel::TorchAsrModel(const TorchAsrModel& other) {
   eos_ = other.eos_;
   is_bidirectional_decoder_ = other.is_bidirectional_decoder_;
   chunk_size_ = other.chunk_size_;
-  num_left_chunks_ = other.chunk_size_;
+  num_left_chunks_ = other.num_left_chunks_;
   offset_ = other.offset_;
   // 2. Model copy, just copy the model ptr since:
   // PyTorch allows using multiple CPU threads during TorchScript model
@@ -82,10 +100,9 @@ void TorchAsrModel::Reset() {
   cached_feature_.clear();
 }
 
-
 void TorchAsrModel::ForwardEncoderFunc(
     const std::vector<std::vector<float>>& chunk_feats,
-    std::vector<std::vector<float>> *out_prob) {
+    std::vector<std::vector<float>>* out_prob) {
   // 1. Prepare libtorch required data, splice cached_feature_ and chunk_feats
   // The first dimension is for batchsize, which is 1.
   int num_frames = cached_feature_.size() + chunk_feats.size();
@@ -93,30 +110,29 @@ void TorchAsrModel::ForwardEncoderFunc(
   torch::Tensor feats =
       torch::zeros({1, num_frames, feature_dim}, torch::kFloat);
   for (size_t i = 0; i < cached_feature_.size(); ++i) {
-    torch::Tensor row = torch::from_blob(
-        const_cast<float *>(cached_feature_[i].data()),
-        {feature_dim}, torch::kFloat).clone();
+    torch::Tensor row =
+        torch::from_blob(const_cast<float*>(cached_feature_[i].data()),
+                         {feature_dim}, torch::kFloat)
+            .clone();
     feats[0][i] = std::move(row);
   }
   for (size_t i = 0; i < chunk_feats.size(); ++i) {
-    torch::Tensor row = torch::from_blob(
-        const_cast<float *>(chunk_feats[i].data()),
-        {feature_dim}, torch::kFloat).clone();
+    torch::Tensor row =
+        torch::from_blob(const_cast<float*>(chunk_feats[i].data()),
+                         {feature_dim}, torch::kFloat)
+            .clone();
     feats[0][cached_feature_.size() + i] = std::move(row);
   }
 
   // 2. Encoder chunk forward
   int requried_cache_size = chunk_size_ * num_left_chunks_;
   torch::NoGradGuard no_grad;
-  std::vector<torch::jit::IValue> inputs = {feats,
-                                            offset_,
-                                            requried_cache_size,
-                                            att_cache_,
-                                            cnn_cache_};
+  std::vector<torch::jit::IValue> inputs = {feats, offset_, requried_cache_size,
+                                            att_cache_, cnn_cache_};
 
   // Refer interfaces in wenet/transformer/asr_model.py
-  auto outputs = model_->get_method(
-      "forward_encoder_chunk")(inputs).toTuple()->elements();
+  auto outputs =
+      model_->get_method("forward_encoder_chunk")(inputs).toTuple()->elements();
   CHECK_EQ(outputs.size(), 3);
   torch::Tensor chunk_out = outputs[0].toTensor();
   att_cache_ = outputs[1].toTensor();
@@ -139,7 +155,6 @@ void TorchAsrModel::ForwardEncoderFunc(
   }
 }
 
-
 float TorchAsrModel::ComputeAttentionScore(const torch::Tensor& prob,
                                            const std::vector<int>& hyp,
                                            int eos) {
@@ -152,10 +167,8 @@ float TorchAsrModel::ComputeAttentionScore(const torch::Tensor& prob,
   return score;
 }
 
-
 void TorchAsrModel::AttentionRescoring(
-    const std::vector<std::vector<int>>& hyps,
-    float reverse_weight,
+    const std::vector<std::vector<int>>& hyps, float reverse_weight,
     std::vector<float>* rescoring_score) {
   CHECK(rescoring_score != nullptr);
   int num_hyps = hyps.size();
@@ -190,8 +203,11 @@ void TorchAsrModel::AttentionRescoring(
 
   // Step 2: Forward attention decoder by hyps and corresponding encoder_outs_
   torch::Tensor encoder_out = torch::cat(encoder_outs_, 1);
-  auto outputs = model_-> run_method("forward_attention_decoder", hyps_tensor,
-      hyps_length, encoder_out, reverse_weight).toTuple()->elements();
+  auto outputs = model_
+                     ->run_method("forward_attention_decoder", hyps_tensor,
+                                  hyps_length, encoder_out, reverse_weight)
+                     .toTuple()
+                     ->elements();
   auto probs = outputs[0].toTensor();
   auto r_probs = outputs[1].toTensor();
   CHECK_EQ(probs.size(0), num_hyps);
@@ -216,10 +232,9 @@ void TorchAsrModel::AttentionRescoring(
     }
 
     // combined left-to-right and right-to-left score
-    (*rescoring_score)[i] =  score * (1 - reverse_weight) +
-                             r_score * reverse_weight;
+    (*rescoring_score)[i] =
+        score * (1 - reverse_weight) + r_score * reverse_weight;
   }
 }
-
 
 }  // namespace wenet
