@@ -175,7 +175,7 @@ def __cmd():
   desc = "利用本地的音频文件夹和标注文件文件夹生成wenet格式数据."
   parser = ArgumentParser(
       description=desc,
-      parents=[get_parser(),  get_wav_parser(), get_textgrid_parser()])
+      parents=[get_parser(), get_wav_parser(), get_textgrid_parser()])
   parser.add_argument("--dev_splits", type=float, default=0.05,
                       help="验证集划分比例, 默认0.05.")
   parser.add_argument("--nj", type=int, default=16, help="线程数, 默认16.")
