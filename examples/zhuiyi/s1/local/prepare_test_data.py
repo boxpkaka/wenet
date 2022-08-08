@@ -10,7 +10,7 @@ from base_utils import dataset
 from base_utils.dataset import CorpusConf, DbConf, db_name_parser
 from base_utils.utils import LOGGER_FORMAT
 
-from local.prepare_data_for_raw import gen_data_by_wav_utts
+from .prepare_data_for_raw import gen_data_by_wav_utts
 
 _LOGGER = logging.getLogger(__file__)
 
@@ -19,13 +19,9 @@ def __cmd():
   desc = "准备生成测试集的raw格式数据."
   parser = ArgumentParser(description=desc, parents=[db_name_parser()])
   parser.add_argument("subsets", nargs="+", help="子集名称, 必须存在于AsrData表内.")
-  parser.add_argument("--wavs_dir",
-                      type=Path,
-                      default=Path("data/wavs"),
+  parser.add_argument("--wavs_dir", type=Path, default=Path("data/wavs"),
                       help="wav音频生成目录, 默认data/wavs, 当路径存在时不会覆盖.")
-  parser.add_argument("--pad_length",
-                      type=int,
-                      default=120,
+  parser.add_argument("--pad_length", type=int, default=120,
                       help="生成音频时尾部padding静音时长, 默认120.")
   parser.add_argument("--nj", type=int, default=32, help="线程数, 默认32.")
   args = parser.parse_args()
@@ -33,11 +29,9 @@ def __cmd():
   corpus_conf = CorpusConf(DbConf(args.db_name))
   corpus = dataset.AsrCorpus(corpus_conf)
   wav_utts_list = corpus.get_wav_utts_list(args.subsets, filter_mty=True)
-  gen_data_by_wav_utts(wav_utts_list,
-                       args.wavs_dir / args.subsets[0],
+  gen_data_by_wav_utts(wav_utts_list, args.wavs_dir / args.subsets[0],
                        Path("data") / args.subsets[0],
-                       pad_length=args.pad_length,
-                       nj=args.nj)
+                       pad_length=args.pad_length, nj=args.nj)
 
 
 if __name__ == '__main__':

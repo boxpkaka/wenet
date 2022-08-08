@@ -139,13 +139,8 @@ def gen_local_db(wav_conf, textgrid_conf, biz_name, need_rename=False, nj=16):
   return localdb
 
 
-def gen_wenet_data(data_dir: Path,
-                   wav_conf,
-                   textgrid_conf,
-                   biz_name,
-                   need_rename,
-                   dev_splits,
-                   nj=16):
+def gen_wenet_data(data_dir: Path, wav_conf, textgrid_conf, biz_name,
+                   need_rename, dev_splits, nj=16):
   """生成wenet需要的数据.
 
   Args:
@@ -171,9 +166,7 @@ def gen_wenet_data(data_dir: Path,
   train = wav_utts_list[:-split]
   dev = wav_utts_list[-split:]
 
-  gen_data_by_wav_utts(train,
-                       data_dir / "wavs" / "train",
-                       data_dir / "train",
+  gen_data_by_wav_utts(train, data_dir / "wavs" / "train", data_dir / "train",
                        nj=nj)
   gen_data_by_wav_utts(dev, data_dir / "wavs" / "dev", data_dir / "dev", nj=nj)
 
@@ -182,23 +175,15 @@ def __cmd():
   desc = "利用本地的音频文件夹和标注文件文件夹生成wenet格式数据."
   parser = ArgumentParser(
       description=desc,
-      parents=[get_parser(),
-               get_wav_parser(),
-               get_textgrid_parser()])
-  parser.add_argument("--dev_splits",
-                      type=float,
-                      default=0.05,
+      parents=[get_parser(),  get_wav_parser(), get_textgrid_parser()])
+  parser.add_argument("--dev_splits", type=float, default=0.05,
                       help="验证集划分比例, 默认0.05.")
   parser.add_argument("--nj", type=int, default=16, help="线程数, 默认16.")
   args = parser.parse_args()
 
-  gen_wenet_data(args.data_dir,
-                 WavConf(args),
-                 TextGrigConf(args),
-                 biz_name=args.business_name,
-                 need_rename=args.need_rename,
-                 dev_splits=args.dev_splits,
-                 nj=args.nj)
+  gen_wenet_data(args.data_dir, WavConf(args), TextGrigConf(args),
+                 biz_name=args.business_name, need_rename=args.need_rename,
+                 dev_splits=args.dev_splits, nj=args.nj)
 
 
 if __name__ == '__main__':

@@ -100,12 +100,9 @@ def get_parser():
   """
   parser = ArgumentParser(add_help=False)
   parser.add_argument("data_dir", type=Path, help="生成的数据文件夹路径.")
-  parser.add_argument("--need_rename",
-                      type=bool,
-                      default=False,
+  parser.add_argument("--need_rename", type=bool, default=False,
                       help="是否需要重命名, 默认选择否.")
-  parser.add_argument("--business_name",
-                      type=str,
+  parser.add_argument("--business_name", type=str,
                       help="数据对应的业务名, 用于音频重命名, 默认'selflearning'",
                       default="selflearning")
   return parser

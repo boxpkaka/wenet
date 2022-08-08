@@ -13,7 +13,7 @@ stop_stage=2
 data_type=raw
 num_utts_per_shard=1000
 
-test_sets="test1 test2 test3 test4 test_dalianshuiwu test_longhudichan_yingxiao test_taipingcaixian test_zhongyizaixian"
+test_sets="test2 test3 test4 test_dalianshuiwu test_longhudichan_yingxiao test_taipingcaixian test_zhongyizaixian"
 
 average_num=5
 decode_modes="attention_rescoring"
