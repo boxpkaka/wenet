@@ -124,11 +124,13 @@ def gen_data_by_wav_utts(wav_utts,
     wav_dir.mkdir(parents=True)
     write_wav_multithread(wav_utts, wav_dir, pad_length, nj)
 
-  if data_dir.exists():
-    _LOGGER.info(f"{data_dir} 已经存在, 如果需要重新生成请手动删除.")
+  if not data_dir.exists():
+    data_dir.mkdir(parents=True)
+
+  if (data_dir / "wav.scp").exists() and (data_dir / "text").exists():
+    _LOGGER.info(f"{data_dir}下wav.scp和text已经存在, 如果需要重新生成请手动删除.")
   else:
     updated_wav_utts = update_wav_utts(wav_utts, wav_dir)
-    data_dir.mkdir(parents=True)
     write_data(updated_wav_utts, data_dir)
 
 

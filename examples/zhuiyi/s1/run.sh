@@ -41,7 +41,6 @@ checkpoint=
 average_checkpoint=true
 decode_checkpoint=$dir/final.pt
 average_num=5
-decode_modes="attention_rescoring"
 
 . tools/parse_options.sh || exit 1
 
@@ -124,6 +123,15 @@ fi
 
 if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   echo "$(date) stage 4: 导出script model."
+  if [ ${average_checkpoint} == true ]; then
+    decode_checkpoint=$dir/avg_${average_num}.pt
+    echo "do model average and final checkpoint is $decode_checkpoint"
+    python wenet/bin/average_model.py \
+      --dst_model $decode_checkpoint \
+      --src_path $dir \
+      --num ${average_num} \
+      --val_best
+  fi
   python wenet/bin/export_jit.py \
     --config $dir/train.yaml \
     --checkpoint $dir/avg_${average_num}.pt \
