@@ -15,7 +15,7 @@ from base_utils.dataset.utils import (local_data_insert_many,
 from base_utils.text import solve_with_oov
 from base_utils.utils import LOGGER_FORMAT
 
-from ..prepare_data_for_raw import gen_data_by_wav_utts
+from .prepare_data_for_raw import gen_data_by_wav_utts
 from .utils import (TextGrigConf, WavConf, get_parser, get_textgrid_parser,
                     get_wav_parser)
 

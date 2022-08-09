@@ -43,7 +43,7 @@ fi
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
   echo "$(date) stage 0: 准备基础数据."
   for x in ${test_sets}; do
-    python3 -m local.prepare_test_data $x
+    python3 -m local.prepare_data.prepare_test_data $x
   done
 fi
 

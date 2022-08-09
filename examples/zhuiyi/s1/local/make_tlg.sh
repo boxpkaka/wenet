@@ -34,11 +34,11 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   lm=data/local/lm
   mkdir -p $lm
   cp $text $lm/text
-  local/train_lms.sh
+  local/train_lms.sh $lm/text data/local/dict/lexicon.txt $lm
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
-  echo "$(date) stage 3: Build decoding TLG."
+  echo "$(date) stage 2: Build decoding TLG."
   tools/fst/compile_lexicon_token_fst.sh \
     data/local/dict data/local/tmp data/local/lang
   tools/fst/make_tlg.sh data/local/lm data/local/lang data/lang_test || exit 1

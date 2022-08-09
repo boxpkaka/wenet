@@ -5,8 +5,17 @@
 set -e
 . ./path.sh
 
-text=data/local/lm/text
-lexicon=data/local/dict/lexicon.txt
+if [ $# != 3 ]; then
+  echo "Usage: $0 [options] <text> <lexicon> <lm_dir>"
+  echo "text: 文本路径."
+  echo "lexicon: 词典路径."
+  echo "lm_dir: 语言模型文件夹, 用来保存arpa模型和相关文件."
+  exit 1
+fi
+
+text=$1
+lexicon=$2
+dir=$3
 
 for f in "$text" "$lexicon"; do
   [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
@@ -20,7 +29,6 @@ if ! which ngram-count > /dev/null; then
     exit 1
 fi
 
-dir=data/local/lm
 mkdir -p $dir
 
 cleantext=$dir/text.no_oov

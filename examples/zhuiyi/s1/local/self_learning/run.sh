@@ -5,7 +5,7 @@
 . ./path.sh || exit 1
 
 stage=0
-stop_stage=2
+stop_stage=3
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
 # NFS is required if num_nodes > 1.
 num_nodes=1
@@ -19,7 +19,6 @@ train_set=train
 dev_set=dev
 
 cmvn=true
-dir=exp/unified_conformer
 
 # use average_checkpoint will get better result
 average_checkpoint=true
@@ -88,10 +87,10 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   $cmvn && cmvn_opts="--cmvn ${out_dir}/global_cmvn"
   
   # CPU训练时的相关配置
+  cp wenet/bin/train.py local/self_learning/
   if [ ${num_gpus} -eq 0 ]; then
     num_gpus=1
     world_size=-1
-    cp wenet/bin/train.py local/self_learning/
     if [ ${cpus} -ne -1 ]; then
       sed -i "/def main():/a\    torch.set_num_threads(${cpus})" local/self_learning/train.py
     fi
@@ -144,6 +143,31 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   python wenet/bin/export_jit.py \
     --config $out_dir/train.yaml \
     --checkpoint $out_dir/avg_${average_num}.pt \
-    --output_file final.zip \
-    --output_quant_file final_quant.zip
+    --output_file $out_dir/final.zip \
+    --output_quant_file $out_dir/asr.zip
+fi
+
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+  echo "$(date) stage 3: 导出onnx model."
+  if [ ${average_checkpoint} == true ]; then
+    decode_checkpoint=$out_dir/avg_${average_num}.pt
+  fi
+  # 导出流式模型
+  onnx_dir=$out_dir/onnx/online_model
+  python wenet/bin/export_onnx_cpu.py \
+    --config $out_dir/train.yaml \
+    --checkpoint $out_dir/avg_${average_num}.pt \
+    --chunk_size 16 \
+    --output_dir $onnx_dir \
+    --num_decoding_left_chunks -1
+  
+  # 导出非流式模型
+  onnx_dir=$out_dir/onnx/offline_model
+  python wenet/bin/export_onnx_cpu.py \
+    --config $out_dir/train.yaml \
+    --checkpoint $out_dir/avg_${average_num}.pt \
+    --chunk_size -1 \
+    --output_dir $onnx_dir \
+    --num_decoding_left_chunks -1
+
 fi
