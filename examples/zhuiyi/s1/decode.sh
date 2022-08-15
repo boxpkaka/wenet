@@ -13,23 +13,37 @@ stop_stage=2
 data_type=raw
 num_utts_per_shard=1000
 
-test_set="test1 test2 test3 test4 test_dalianshuiwu test_longhudichan_yingxiao test_taipingcaixian test_zhongyizaixian"
+test_sets="test2 test3 test4 test_dalianshuiwu test_longhudichan_yingxiao test_taipingcaixian test_zhongyizaixian"
 
-dict=data/dict/lang_char.txt
-dir=exp/unified_conformer
-
-# use average_checkpoint will get better result
-average_checkpoint=true
-decode_checkpoint=$dir/final.pt
 average_num=5
 decode_modes="attention_rescoring"
 
 . tools/parse_options.sh || exit 1
 
+if [[ ! $# -eq 3 ]]; then
+  echo "Usage: $0 <model_path> <data_dir> <result_dir>"
+  echo "exp_dir: 模型实验文件夹, 一般为exp/unified_conformer."
+  echo "data_dir: 数据文件夹, 一般为data, 需要包含dict文件."
+  echo "result_dir: 结果文件夹."
+  echo "--average_checkpoint: 默认true."
+  echo "--average_num: 默认5."
+  exit 1
+fi
+
+dir=$1
+dict=$2/dict/lang_char.txt
+result_dir=$3
+
+if [[ ${average_checkpoint} == "true" ]]; then
+  decode_checkpoint=$dir/avg_${average_num}.pt
+else
+  decode_checkpoint=$dir/final.pt
+fi
+
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
   echo "$(date) stage 0: 准备基础数据."
   for x in ${test_sets}; do
-    python3 -m local.prepare_test_data $x
+    python3 -m local.prepare_data.prepare_test_data $x
   done
 fi
 
@@ -49,15 +63,6 @@ fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   echo "$(date) stage 2: 解码."
-  if [ ${average_checkpoint} == true ]; then
-    decode_checkpoint=$dir/avg_${average_num}.pt
-    echo "do model average and final checkpoint is $decode_checkpoint"
-    python wenet/bin/average_model.py \
-      --dst_model $decode_checkpoint \
-      --src_path $dir \
-      --num ${average_num} \
-      --val_best
-  fi
   # Specify decoding_chunk_size if it's a unified dynamic chunk trained model
   # -1 for full chunk
   decoding_chunk_size=16
@@ -69,7 +74,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     for x in ${test_sets}; do
     {
       test_name=test_${mode}${decoding_chunk_size:+_chunk$decoding_chunk_size}
-      test_dir=$dir/$test_name/${x}
+      test_dir=$result_dir/${x}
       mkdir -p $test_dir
       echo "正在解码: ${x}, 解码日志: ${test_name}_${x}.log"
       python wenet/bin/recognize.py \
@@ -88,9 +93,8 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         >${test_name}_${x}.log 2>&1
       python tools/compute-wer.py --char=1 --v=1 \
         data/$x/text $test_dir/text >$test_dir/wer
-    } &
+    }
     done
   }
   done
-  wait
 fi

@@ -105,10 +105,7 @@ def update_wav_utts(wav_utts_list, wav_dir: Path):
   return updated_wav_utts
 
 
-def gen_data_by_wav_utts(wav_utts,
-                         wav_dir: Path,
-                         data_dir: Path,
-                         pad_length=0,
+def gen_data_by_wav_utts(wav_utts, wav_dir: Path, data_dir: Path, pad_length=0,
                          nj=32):
   """根据传入的wav_utts生成data数据.
 
@@ -124,21 +121,18 @@ def gen_data_by_wav_utts(wav_utts,
     wav_dir.mkdir(parents=True)
     write_wav_multithread(wav_utts, wav_dir, pad_length, nj)
 
-  if data_dir.exists():
-    _LOGGER.info(f"{data_dir} 已经存在, 如果需要重新生成请手动删除.")
+  if not data_dir.exists():
+    data_dir.mkdir(parents=True)
+
+  if (data_dir / "wav.scp").exists() and (data_dir / "text").exists():
+    _LOGGER.info(f"{data_dir}下wav.scp和text已经存在, 如果需要重新生成请手动删除.")
   else:
     updated_wav_utts = update_wav_utts(wav_utts, wav_dir)
-    data_dir.mkdir(parents=True)
     write_data(updated_wav_utts, data_dir)
 
 
-def gen_data_by_subsets(corpus_conf: dataset.CorpusConf,
-                        subsets,
-                        wav_dir: Path,
-                        data_dir: Path,
-                        bizs=None,
-                        pad_length=0,
-                        nj=32):
+def gen_data_by_subsets(corpus_conf: dataset.CorpusConf, subsets, wav_dir: Path,
+                        data_dir: Path, bizs=None, pad_length=0, nj=32):
   """从数据库读取数据, 生成data数据.
 
   Args:
@@ -162,21 +156,14 @@ def __cmd():
   parser.add_argument("wav_dir", type=Path, help="音频保存文件夹, 当路径存在时不会覆盖.")
   parser.add_argument("data_dir", type=Path, help="数据文件夹.")
   parser.add_argument("--biz", nargs="+", help="选取特定的业务, 支持多个.")
-  parser.add_argument("--pad_length",
-                      type=int,
-                      default=0,
+  parser.add_argument("--pad_length", type=int, default=0,
                       help="生成音频时尾部padding静音时长, 默认0.")
   parser.add_argument("--nj", type=int, default=32, help="线程数, 默认32.")
   args = parser.parse_args()
 
   corpus_conf = CorpusConf(DbConf(args.db_name))
-  gen_data_by_subsets(corpus_conf,
-                      args.subsets,
-                      args.wav_dir,
-                      args.data_dir,
-                      bizs=args.biz,
-                      pad_length=args.pad_length,
-                      nj=args.nj)
+  gen_data_by_subsets(corpus_conf, args.subsets, args.wav_dir, args.data_dir,
+                      bizs=args.biz, pad_length=args.pad_length, nj=args.nj)
 
 
 if __name__ == '__main__':
