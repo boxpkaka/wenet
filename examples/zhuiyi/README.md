@@ -81,12 +81,45 @@ export NCCL_P2P_DISABLE=1
 
 ## 自学习平台
 
+### self_learning准备
+
+将模型对应版本的self_learning文件夹放到模型文件夹根目录, 若部分旧模型发版时已经存在self_learning, 进行覆盖即可.
+
 ### 声学模型调优
 
 1. 数据准备
 
    ```bash
-   python3 local.prepare_data.prepare_data_from_local -h
+   python3 -m local.prepare_data.prepare_data_from_local -h
+   usage: prepare_data_from_local.py [-h] [--need_rename NEED_RENAME]
+                                     [--business_name BUSINESS_NAME]
+                                     [--dev_splits DEV_SPLITS] [--nj NJ]
+                                     data_dir wav_in_dir wav_out_dir sample_rate
+                                     sample_width wav_channels textgrid_dir
+                                     paser_conf_path textgrid_channel
+
+   利用本地的音频文件夹和标注文件文件夹生成wenet格式数据.
+
+   positional arguments:
+      data_dir              生成的数据文件夹路径.
+      wav_in_dir            输入音频文件夹路径.
+      wav_out_dir           输出音频文件夹路径.
+      sample_rate           音频采样率.
+      sample_width          音频位深.
+      wav_channels          音频声道数.
+      textgrid_dir          textgrid文件夹路径.
+      paser_conf_path       textgird配置信息文件路径.
+      textgrid_channel      textgrid文件对应声道信息.
+
+   optional arguments:
+      -h, --help            show this help message and exit
+      --need_rename NEED_RENAME
+                            是否需要重命名, 默认选择否.
+      --business_name BUSINESS_NAME
+                            数据对应的业务名, 用于音频重命名, 默认'selflearning'
+      --dev_splits DEV_SPLITS
+                            验证集划分比例, 默认0.05.
+      --nj NJ               线程数, 默认16.
    ```
 
 2. 模型调优
@@ -116,6 +149,20 @@ export NCCL_P2P_DISABLE=1
 1. 数据准备
 
    准备好文本数据, 一句话一行格式.
+
+   ```bash
+   python3 -m local.self_learning.format_text -h
+   usage: format_text.py [-h] ori_text format_text
+
+   对原始文本进行处理, 以便后续构建语言模型.
+
+   positional arguments:
+      ori_text     待处理文本.
+      format_text  处理后的文本.
+   
+   optional arguments:
+      -h, --help   show this help message and exit
+   ```
 
 2. 构造解码图
 
