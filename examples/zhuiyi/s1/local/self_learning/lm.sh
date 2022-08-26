@@ -18,8 +18,8 @@ lambda=0.85
 . tools/parse_options.sh || exit 1
 
 if [ $# != 3 ]; then
-  echo "Usage: $0 [options] <model_dir> <text> <out_dir>"
-  echo "model_dir: 模型文件夹."
+  echo "Usage: $0 [options] <self_learning_dir> <text> <out_dir>"
+  echo "self_learning_dir: 自学习文件夹路径."
   echo "text: 调优需要的文本."
   echo "out_dir: 输出文件夹."
   echo "--order: 默认3."
@@ -28,10 +28,10 @@ if [ $# != 3 ]; then
 fi
 
 export CUDA_VISIBLE_DEVICES=$gpus
-model_dir=$1
+self_learning=$1
 text=$2
 out_dir=$3
-data=$model_dir/self_learning/data/
+data=$self_learning/data/
 
 lm=$out_dir/data/local/lm
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then

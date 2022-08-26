@@ -34,9 +34,9 @@ cpus=-1
 . tools/parse_options.sh || exit 1
 
 if [ $# != 3 ]; then
-  echo "Usage: $0 [options] <data_dir> <model_dir> <out_dir>"
+  echo "Usage: $0 [options] <data_dir> <self_learning_dir> <out_dir>"
   echo "data_dir: 调优数据文件夹, 需要包含train和dev."
-  echo "model_dir: ASR模型文件夹, 需要包含self_learning文件夹."
+  echo "self_learning_dir: 自学习文件夹路径, 需要单独获取, 部分旧模型发版时已包含."
   echo "out_dir: 调优模型保存路径."
   echo "--average_num: 默认5."
   echo "--gpus: 显卡编号, ','连接, 如'0,1,2,3'."
@@ -51,13 +51,13 @@ fi
 
 export CUDA_VISIBLE_DEVICES=$gpus
 data_dir=$1
-model_dir=$2
+self_learning=$2
 out_dir=$3
 
-train_config=$model_dir/self_learning/train.yaml
-dict=data/dict/lang_char.txt
-checkpoint=$model_dir/self_learning/init.pt
-cmvn_dir=$model_dir/self_learning/global_cmvn
+train_config=$self_learning/train.yaml
+dict=$self_learning/data/dict/lang_char.txt
+checkpoint=$self_learning/init.pt
+cmvn_dir=$self_learning/global_cmvn
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
   echo "$(date) stage 0: 生成指定格式的数据."
