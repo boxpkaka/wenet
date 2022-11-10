@@ -2,13 +2,13 @@ cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
 project(wenet VERSION 0.1)
 
-option(CXX11_ABI "whether to use CXX11_ABI libtorch" OFF)
-option(FST_HAVE_BIN "whether to build fst binaries" OFF)
+set(TORCH ON)  # Use torch for binding backend
 set(ONNX OFF)  # ONNX is not used
+set(CXX11_ABI OFF)
+set(FST_HAVE_BIN OFF)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 
 include(FetchContent)
-include(ExternalProject)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(FETCHCONTENT_QUIET OFF)
@@ -35,9 +35,6 @@ include_directories(
 )
 
 add_subdirectory(utils)
-if(NOT MSVC)
-  add_dependencies(utils openfst)
-endif()
 add_subdirectory(frontend)
 add_subdirectory(post_processor)
 add_subdirectory(kaldi)  # kaldi: wfst based decoder

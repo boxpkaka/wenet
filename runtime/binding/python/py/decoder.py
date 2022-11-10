@@ -12,19 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
+from typing import List, Optional
 
 import _wenet
 
+from .hub import Hub
+
 
 class Decoder:
+
     def __init__(self,
-                 model_dir: str,
+                 model_dir: Optional[str] = None,
                  lang: str = 'chs',
                  nbest: int = 1,
                  enable_timestamp: bool = False,
-                 context: List[str] = None,
-                 context_score: float = 3.0):
+                 context: Optional[List[str]] = None,
+                 context_score: float = 3.0,
+                 continuous_decoding: bool = False):
         """ Init WeNet decoder
         Args:
             lang: language type of the model
@@ -33,14 +37,20 @@ class Decoder:
                for the final result
             context: context words
             context_score: bonus score when the context is matched
+            continuous_decoding: enable countinous decoding or not
         """
+        if model_dir is None:
+            model_dir = Hub.get_model_by_lang(lang)
+
         self.d = _wenet.wenet_init(model_dir)
+
         self.set_language(lang)
         self.set_nbest(nbest)
         self.enable_timestamp(enable_timestamp)
         if context is not None:
             self.add_context(context)
-        self.set_context_score(context_score)
+            self.set_context_score(context_score)
+        self.set_continuous_decoding(continuous_decoding)
 
     def __del__(self):
         _wenet.wenet_free(self.d)
@@ -70,6 +80,10 @@ class Decoder:
         assert lang in ['chs', 'en']
         _wenet.wenet_set_language(self.d, lang)
 
+    def set_continuous_decoding(self, continuous_decoding: bool):
+        flag = 1 if continuous_decoding else 0
+        _wenet.wenet_set_continuous_decoding(self.d, flag)
+
     def decode(self, pcm: bytes, last: bool = True) -> str:
         """ Decode the input data
 
@@ -81,6 +95,8 @@ class Decoder:
         finish = 1 if last else 0
         _wenet.wenet_decode(self.d, pcm, len(pcm), finish)
         result = _wenet.wenet_get_result(self.d)
+        if last:  # Reset status for next decoding automatically
+            self.reset()
         return result
 
     def decode_wav(self, wav_file: str) -> str:

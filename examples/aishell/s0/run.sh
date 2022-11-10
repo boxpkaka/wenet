@@ -98,7 +98,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
 fi
 
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
-  echo "Prepare data, prepare requried format"
+  echo "Prepare data, prepare required format"
   for x in dev test ${train_set}; do
     if [ $data_type == "shard" ]; then
       tools/make_shard_list.py --num_utts_per_shard $num_utts_per_shard \
@@ -233,9 +233,56 @@ if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
     --blank_skip_thresh 0.98 --ctc_weight 0.5 --rescoring_weight 1.0 \
     --chunk_size $chunk_size \
     --fst_path data/lang_test/TLG.fst \
+    --dict_path data/lang_test/words.txt \
     data/test/wav.scp data/test/text $dir/final.zip \
-    data/lang_test/words.txt $dir/lm_with_runtime
+    data/lang_test/units.txt $dir/lm_with_runtime
   # Please see $dir/lm_with_runtime for wer
 fi
 
+# Optionally, you can decode with k2 hlg
+if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then
+  if [ ! -f data/local/lm/lm.arpa ]; then
+    echo "Please run prepare dict and train lm in Stage 7" || exit 1;
+  fi
+
+  # 8.1 Build decoding HLG
+  required="data/local/hlg/HLG.pt data/local/hlg/words.txt"
+  for f in $required; do
+    if [ ! -f $f ]; then
+      tools/k2/make_hlg.sh data/local/dict/ data/local/lm/ data/local/hlg
+      break
+    fi
+  done
+
+  # 8.2 Decode using HLG
+  decoding_chunk_size=
+  lm_scale=0.7
+  decoder_scale=0.1
+  r_decoder_scale=0.7
+  for mode in hlg_onebest hlg_rescore; do
+  {
+    test_dir=$dir/test_${mode}
+    mkdir -p $test_dir
+    python wenet/bin/recognize.py --gpu 0 \
+      --mode $mode \
+      --config $dir/train.yaml \
+      --data_type $data_type \
+      --test_data data/test/data.list \
+      --checkpoint $decode_checkpoint \
+      --beam_size 10 \
+      --batch_size 16 \
+      --penalty 0.0 \
+      --dict $dict \
+      --word data/local/hlg/words.txt \
+      --hlg data/local/hlg/HLG.pt \
+      --lm_scale $lm_scale \
+      --decoder_scale $decoder_scale \
+      --r_decoder_scale $r_decoder_scale \
+      --result_file $test_dir/text \
+      ${decoding_chunk_size:+--decoding_chunk_size $decoding_chunk_size}
+    python tools/compute-wer.py --char=1 --v=1 \
+      data/test/text $test_dir/text > $test_dir/wer
+  }
+  done
+fi
 

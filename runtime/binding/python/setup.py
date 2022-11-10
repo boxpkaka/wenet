@@ -48,11 +48,13 @@ class BuildExtension(build_ext):
         libs = []
         torch_lib = 'fc_base/libtorch-src/lib'
         for ext in ['so', 'pyd']:
-            libs.extend(glob.glob(
-                f"{self.build_temp}/**/_wenet*.{ext}", recursive=True))
+            libs.extend(
+                glob.glob(f"{self.build_temp}/**/_wenet*.{ext}",
+                          recursive=True))
         for ext in ['so', 'dylib', 'dll']:
-            libs.extend(glob.glob(
-                f"{self.build_temp}/**/*wenet_api.{ext}", recursive=True))
+            libs.extend(
+                glob.glob(f"{self.build_temp}/**/*wenet_api.{ext}",
+                          recursive=True))
             libs.extend(glob.glob(f'{src_dir}/{torch_lib}/*c10.{ext}'))
             libs.extend(glob.glob(f'{src_dir}/{torch_lib}/*torch_cpu.{ext}'))
 
@@ -60,12 +62,12 @@ class BuildExtension(build_ext):
             fst_lib = 'fc_base/openfst-build/src/lib/.libs'
             for ext in ['so', 'dylib']:
                 libs.extend(glob.glob(f'{src_dir}/{fst_lib}/libfst.{ext}'))
-            libs.extend(glob.glob(f'{src_dir}/{torch_lib}/libgomp*'))  # linux
-            libs.extend(glob.glob(f'{src_dir}/{torch_lib}/libiomp*'))  # macos
         else:
             libs.extend(glob.glob(f'{src_dir}/{torch_lib}/asmjit.dll'))
             libs.extend(glob.glob(f'{src_dir}/{torch_lib}/fbgemm.dll'))
             libs.extend(glob.glob(f'{src_dir}/{torch_lib}/uv.dll'))
+        libs.extend(glob.glob(f'{src_dir}/{torch_lib}/libgomp*'))  # linux
+        libs.extend(glob.glob(f'{src_dir}/{torch_lib}/libiomp5*'))  # macos/win
 
         for lib in libs:
             print(f"Copying {lib} to {self.build_lib}/")
@@ -78,11 +80,11 @@ def read_long_description():
     return readme
 
 
-package_name = "wenet"
+package_name = "wenetruntime"
 
 setuptools.setup(
     name=package_name,
-    version='1.0.3',
+    version='1.0.8',
     author="Binbin Zhang",
     author_email="binbzha@qq.com",
     package_dir={
@@ -95,6 +97,8 @@ setuptools.setup(
     ext_modules=[cmake_extension("_wenet")],
     cmdclass={"build_ext": BuildExtension},
     zip_safe=False,
+    setup_requires=["tqdm"],
+    install_requires=["tqdm"],
     classifiers=[
         "Programming Language :: C++",
         "Programming Language :: Python",

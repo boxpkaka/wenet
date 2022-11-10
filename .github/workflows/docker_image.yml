@@ -16,7 +16,7 @@ jobs:
 
     - name: Build the wenet docker image
       run: |
-        cd runtime/server/x86/docker
+        cd runtime/libtorch/docker
         docker build -t wenet:latest .
         docker image tag wenet:latest ${{ secrets.DOCKERHUB_USERNAME }}/wenet:latest
         docker push ${{ secrets.DOCKERHUB_USERNAME }}/wenet:latest
@@ -25,17 +25,16 @@ jobs:
       run: |
         rm -rf wenet/*
         mkdir wenet/lib
-        root_dir=/home/wenet/runtime/server/x86
+        root_dir=/home/wenet/runtime/libtorch
         torch_lib=$root_dir/fc_base/libtorch-src/lib
         fst_lib=$root_dir/fc_base/openfst-build/src/lib/.libs
-        id=$(docker create ${{ secrets.DOCKERHUB_USERNAME }}/wenet:latest)
-        docker cp $id:$root_dir/build/websocket_server_main wenet
+        id=$(docker run -d -it ${{ secrets.DOCKERHUB_USERNAME }}/wenet:latest)
+        docker cp $id:$root_dir/build/bin/websocket_server_main wenet
         docker cp $id:$torch_lib/libc10.so wenet/lib
         docker cp $id:$torch_lib/libtorch.so wenet/lib
         docker cp $id:$torch_lib/libtorch_cpu.so wenet/lib
         docker cp $id:$(docker exec $id sh -c "ls ${torch_lib}/libgomp-*") wenet/lib
         docker cp -L $id:$fst_lib/libfst.so.8 wenet/lib
-        docker rm -v $id
 
         ls -al wenet/lib
         cat << EOF > run.sh
@@ -49,7 +48,7 @@ jobs:
           --port 10086 \
           --chunk_size 16 \
           --model_path \$model/final.zip \
-          --dict_path \$model/words.txt 2>&1 | tee server.log
+          --unit_path \$model/units.txt 2>&1 | tee server.log
         EOF
 
         id=$(docker create ubuntu:latest)

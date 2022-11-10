@@ -13,7 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #ifndef DECODER_PARAMS_H_
 #define DECODER_PARAMS_H_
 
@@ -29,17 +28,23 @@
 #ifdef USE_TORCH
 #include "decoder/torch_asr_model.h"
 #endif
+#ifdef USE_XPU
+#include "xpu/xpu_asr_model.h"
+#endif
 #include "frontend/feature_pipeline.h"
 #include "post_processor/post_processor.h"
 #include "utils/flags.h"
 #include "utils/string.h"
 
-DEFINE_int32(num_threads, 1, "num threads for ASR model");
+DEFINE_int32(device_id, 0, "set XPU DeviceID for ASR model");
 
 // TorchAsrModel flags
 DEFINE_string(model_path, "", "pytorch exported model path");
 // OnnxAsrModel flags
 DEFINE_string(onnx_dir, "", "directory where the onnx model is saved");
+// XPUAsrModel flags
+DEFINE_string(xpu_model_dir, "",
+              "directory where the XPU model and weights is saved");
 
 // FeaturePipelineConfig flags
 DEFINE_int32(num_bins, 80, "num mel bins for fbank feature");
@@ -66,18 +71,18 @@ DEFINE_double(lattice_beam, 10.0, "lattice beam in ctc wfst search");
 DEFINE_double(acoustic_scale, 1.0, "acoustic scale for ctc wfst search");
 DEFINE_double(blank_skip_thresh, 1.0,
               "blank skip thresh for ctc wfst search, 1.0 means no skip");
-DEFINE_double(length_penalty, 0.0, "length penalty ctc wfst search, will not"
+DEFINE_double(length_penalty, 0.0,
+              "length penalty ctc wfst search, will not"
               "apply on self-loop arc, for balancing the del/ins ratio, "
               "suggest set to -3.0");
 DEFINE_int32(nbest, 10, "nbest for ctc wfst or prefix search");
 
 // SymbolTable flags
 DEFINE_string(dict_path, "",
-              "dict symbol table path, it's same as unit_path when we don't "
-              "use LM in decoding");
-DEFINE_string(
-    unit_path, "",
-    "e2e model unit symbol table, is used to get timestamp of the result");
+              "dict symbol table path, required when LM is enabled");
+DEFINE_string(unit_path, "",
+              "e2e model unit symbol table, it is used in both "
+              "with/without LM scenarios for context/timestamp");
 
 // Context flags
 DEFINE_string(context_path, "", "context path, is used to build context graph");
@@ -120,53 +125,64 @@ std::shared_ptr<DecodeOptions> InitDecodeOptionsFromFlags() {
 
 std::shared_ptr<DecodeResource> InitDecodeResourceFromFlags() {
   auto resource = std::make_shared<DecodeResource>();
-
+  const int kNumGemmThreads = 1;
   if (!FLAGS_onnx_dir.empty()) {
 #ifdef USE_ONNX
     LOG(INFO) << "Reading onnx model ";
-    OnnxAsrModel::InitEngineThreads(FLAGS_num_threads);
+    OnnxAsrModel::InitEngineThreads(kNumGemmThreads);
     auto model = std::make_shared<OnnxAsrModel>();
     model->Read(FLAGS_onnx_dir);
     resource->model = model;
 #else
     LOG(FATAL) << "Please rebuild with cmake options '-DONNX=ON'.";
 #endif
-  } else {
+  } else if (!FLAGS_model_path.empty()) {
 #ifdef USE_TORCH
     LOG(INFO) << "Reading torch model " << FLAGS_model_path;
-    TorchAsrModel::InitEngineThreads(FLAGS_num_threads);
+    TorchAsrModel::InitEngineThreads(kNumGemmThreads);
     auto model = std::make_shared<TorchAsrModel>();
     model->Read(FLAGS_model_path);
     resource->model = model;
 #else
     LOG(FATAL) << "Please rebuild with cmake options '-DTORCH=ON'.";
 #endif
+  } else if (!FLAGS_xpu_model_dir.empty()) {
+#ifdef USE_XPU
+    LOG(INFO) << "Reading XPU WeNet model weight from " << FLAGS_xpu_model_dir;
+    auto model = std::make_shared<XPUAsrModel>();
+    model->SetEngineThreads(kNumGemmThreads);
+    model->SetDeviceId(FLAGS_device_id);
+    model->Read(FLAGS_xpu_model_dir);
+    resource->model = model;
+#else
+    LOG(FATAL) << "Please rebuild with cmake options '-DXPU=ON'.";
+#endif
+  } else {
+    LOG(FATAL) << "Please set ONNX, TORCH or XPU model path!!!";
   }
 
-  std::shared_ptr<fst::Fst<fst::StdArc>> fst = nullptr;
-  if (!FLAGS_fst_path.empty()) {
-    LOG(INFO) << "Reading fst " << FLAGS_fst_path;
-    fst.reset(fst::Fst<fst::StdArc>::Read(FLAGS_fst_path));
-    CHECK(fst != nullptr);
-  }
-  resource->fst = fst;
-
-  LOG(INFO) << "Reading symbol table " << FLAGS_dict_path;
-  auto symbol_table = std::shared_ptr<fst::SymbolTable>(
-      fst::SymbolTable::ReadText(FLAGS_dict_path));
-  resource->symbol_table = symbol_table;
-
-  std::shared_ptr<fst::SymbolTable> unit_table = nullptr;
-  if (!FLAGS_unit_path.empty()) {
-    LOG(INFO) << "Reading unit table " << FLAGS_unit_path;
-    unit_table = std::shared_ptr<fst::SymbolTable>(
-        fst::SymbolTable::ReadText(FLAGS_unit_path));
-    CHECK(unit_table != nullptr);
-  } else if (fst == nullptr) {
-    LOG(INFO) << "Use symbol table as unit table";
-    unit_table = symbol_table;
-  }
+  LOG(INFO) << "Reading unit table " << FLAGS_unit_path;
+  auto unit_table = std::shared_ptr<fst::SymbolTable>(
+      fst::SymbolTable::ReadText(FLAGS_unit_path));
+  CHECK(unit_table != nullptr);
   resource->unit_table = unit_table;
+
+  if (!FLAGS_fst_path.empty()) {  // With LM
+    CHECK(!FLAGS_dict_path.empty());
+    LOG(INFO) << "Reading fst " << FLAGS_fst_path;
+    auto fst = std::shared_ptr<fst::Fst<fst::StdArc>>(
+        fst::Fst<fst::StdArc>::Read(FLAGS_fst_path));
+    CHECK(fst != nullptr);
+    resource->fst = fst;
+
+    LOG(INFO) << "Reading symbol table " << FLAGS_dict_path;
+    auto symbol_table = std::shared_ptr<fst::SymbolTable>(
+        fst::SymbolTable::ReadText(FLAGS_dict_path));
+    CHECK(symbol_table != nullptr);
+    resource->symbol_table = symbol_table;
+  } else {  // Without LM, symbol_table is the same as unit_table
+    resource->symbol_table = unit_table;
+  }
 
   if (!FLAGS_context_path.empty()) {
     LOG(INFO) << "Reading context " << FLAGS_context_path;
@@ -179,7 +195,8 @@ std::shared_ptr<DecodeResource> InitDecodeResourceFromFlags() {
     ContextConfig config;
     config.context_score = FLAGS_context_score;
     resource->context_graph = std::make_shared<ContextGraph>(config);
-    resource->context_graph->BuildContextGraph(contexts, symbol_table);
+    resource->context_graph->BuildContextGraph(contexts,
+                                               resource->symbol_table);
   }
 
   PostProcessOptions post_process_opts;

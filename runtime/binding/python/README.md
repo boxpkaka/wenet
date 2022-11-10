@@ -16,7 +16,7 @@ The best things of the binding are:
 Python 3.6+ is required.
 
 ``` sh
-pip3 install wenet
+pip3 install wenetruntime
 ```
 
 ## Usage
@@ -25,31 +25,32 @@ pip3 install wenet
 
 ``` python
 import sys
-import wenet
+import wenetruntime as wenet
 
-model_dir = sys.argv[1]
-wav_file = sys.argv[2]
-decoder = wenet.Decoder(model_dir)
+wav_file = sys.argv[1]
+decoder = wenet.Decoder(lang='chs')
 ans = decoder.decode_wav(wav_file)
 print(ans)
-# call decoder.reset() if you want to do the next decoding
 ```
-
-`model_dir` is the `Runtime Model` directory of WeNet, it contains:
-* `final.zip`: runtime TorchScript ASR model.
-* `words.txt`: symbol table for decoding.
-* `TLG.fst`: optional, it means decoding with LM when `TLG.fst` is given.
-* `units.txt`: optional, e2e model units which is for generating unit level timestamp when decoded with LM.
-
-Please refer https://github.com/wenet-e2e/wenet/blob/main/docs/pretrained_models.md for the details of `Runtime Model`.
 
 You can also specify the following parameter in `wenet.Decoder`
 
 * `lang` (str): The language you used, `chs` for Chinese, and `en` for English.
+* `model_dir` (str): is the `Runtime Model` directory, it contains the following files.
+   If not provided, official model for specific `lang` will be downloaded automatically.
+
+  * `final.zip`: runtime TorchScript ASR model.
+  * `units.txt`: modeling units file
+  * `TLG.fst`: optional, it means decoding with LM when `TLG.fst` is given.
+  * `words.txt`: optional, word level symbol table for decoding with `TLG.fst`
+
+  Please refer https://github.com/wenet-e2e/wenet/blob/main/docs/pretrained_models.md for the details of `Runtime Model`.
+
 * `nbest` (int): Output the top-n best result.
 * `enable_timestamp` (bool): Whether to enable the word level timestamp.
 * `context` (List[str]): a list of context biasing words.
 * `context_score` (float): context bonus score.
+* `continuous_decoding` (bool): Whether to enable continuous(long) decoding.
 
 For example:
 ``` python
@@ -66,16 +67,15 @@ decoder = wenet.Decoder(model_dir,
 ``` python
 import sys
 import wave
-import wenet
+import wenetruntime as wenet
 
-model_dir = sys.argv[1]
-test_wav = sys.argv[2]
+test_wav = sys.argv[1]
 
 with wave.open(test_wav, 'rb') as fin:
     assert fin.getnchannels() == 1
     wav = fin.readframes(fin.getnframes())
 
-decoder = wenet.Decoder(model_dir)
+decoder = wenet.Decoder(lang='chs')
 # We suppose the wav is 16k, 16bits, and decode every 0.5 seconds
 interval = int(0.5 * 16000) * 2
 for i in range(0, len(wav), interval):
