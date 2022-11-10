@@ -1,0 +1,19 @@
+stages:
+  - check
+  - update
+
+check:
+  stage: check
+  script: "python3 -m pylint --rcfile /data1/share/gitlab/docker_asr/.pylintrc examples/zhuiyi/s1"
+  tags:
+    - group_test
+
+update:
+  stage: update
+  script:
+    - "/data1/share/gitlab/docker_asr/scripts/update.sh wenet true false false"
+  tags:
+    - group_test
+  only:
+    - master
+
