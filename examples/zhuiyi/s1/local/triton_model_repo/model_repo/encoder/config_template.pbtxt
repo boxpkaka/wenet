@@ -1,0 +1,60 @@
+name: "encoder"
+backend: "onnxruntime"
+default_model_filename: "encoder.onnx"
+
+max_batch_size: 64
+input [
+  {
+    name: "speech"
+    data_type: TYPE_#DTYPE
+    dims: [-1, #num_mel_bins] # 80
+  },
+  {
+    name: "speech_lengths"
+    data_type: TYPE_INT32
+    dims: [1]
+    reshape: { shape: [ ] }
+  }
+]
+
+output [
+  {
+    name: "encoder_out"
+    data_type: TYPE_#DTYPE
+    dims: [-1, #encoder_output_size] # [-1, feature_size]
+  },
+  {
+    name: "encoder_out_lens"
+    data_type: TYPE_INT32
+    dims: [1]
+    reshape: { shape: [ ] }
+  },
+  {
+    name: "ctc_log_probs"
+    data_type: TYPE_#DTYPE
+    dims: [-1, #vocab_size]
+  },
+  {
+    name: "beam_log_probs"
+    data_type: TYPE_#DTYPE
+    dims: [-1, #beam_size]  # [-1, beam_size]
+  },
+  {
+    name: "beam_log_probs_idx"
+    data_type: TYPE_INT64
+    dims: [-1, #beam_size] # [-1, beam_size]
+  }
+]
+
+dynamic_batching {
+    preferred_batch_size: [ 16, 32 ]
+  }
+
+
+instance_group [
+    {
+      count: 2
+      kind: KIND_GPU
+    }
+]
+
