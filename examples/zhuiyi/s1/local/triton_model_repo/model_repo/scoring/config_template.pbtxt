@@ -13,7 +13,7 @@ parameters [
   },
   {
     key: "lm_path",
-    value: { string_value: "/root/offline_onnx_gpu/lm.bin"}
+    value: { string_value: "#lm_path"}
   },
   {
     key: "alpha",
@@ -45,7 +45,7 @@ parameters [
   },
   {
     key: "bidecoder",
-    value: { string_value: "0"}
+    value: { string_value: "#bidecoder"}
   },
   {
     key: "rescoring",

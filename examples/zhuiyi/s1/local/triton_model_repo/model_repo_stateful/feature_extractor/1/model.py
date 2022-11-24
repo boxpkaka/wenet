@@ -144,7 +144,6 @@ class TritonPythonModel:
         self.offset_ms = self.get_offset(frame_length_ms, frame_shift_ms)
         self.sample_rate = sample_rate
         self.min_seg = frame_length_ms * sample_rate // 1000
-        print("MIN SEG IS", self.min_seg)
 
     def get_offset(self, frame_length_ms, frame_shift_ms):
         offset_ms = 0
@@ -252,7 +251,7 @@ class TritonPythonModel:
             speech_lengths = batch_speech_lens[i: i + 1]
             i += 1
             if corrid in len_seqid.keys():
-                speech_lengths[0] = len_seqid[corrid].numpy()[0]
+                speech_lengths[0] = len_seqid[corrid]
             else:
                 speech_lengths[0] = r_frames.size(0)
             speech[0][0:r_frames.size(0)] = r_frames.to(speech.device)

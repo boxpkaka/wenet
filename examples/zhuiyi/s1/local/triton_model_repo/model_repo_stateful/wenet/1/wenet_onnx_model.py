@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import multiprocessing
 import os
 
@@ -61,7 +62,7 @@ class WenetModel(object):
     # rescore setting
     self.rescoring = params.get("rescoring", 0)
     print("Using rescoring:", bool(self.rescoring))
-    print(" load all parameters!")
+    print("Successfully load all parameters!")
 
     log_probs_config = pb_utils.get_input_config_by_name(
         model_config, "log_probs")
@@ -166,7 +167,7 @@ class WenetModel(object):
         hyp_score = score[j]
         j += 1
       best_sent.append(li[best_idx][1])
-      best_score.append(hyp_score / max(len(li[best_idx][1]), 1))
+      best_score.append(math.exp(hyp_score / max(len(li[best_idx][1]), 1)))
 
     final_result = self.decoder.MapSentBatch(best_sent)
     return final_result, best_score, cur_encoder_out

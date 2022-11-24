@@ -1,4 +1,5 @@
 import json
+import math
 import multiprocessing
 import os
 
@@ -274,7 +275,7 @@ class TritonPythonModel:
         best_cand_len = cand_lens[best_idx] - 1  # remove sos
         best_cand = cands[best_idx][1:1 + best_cand_len].tolist()
         hyps.append(best_cand)
-        scores.append(best_score[idx] / max(best_cand_len, 1))
+        scores.append(math.exp((best_score[idx] / max(best_cand_len, 1))))
         idx += 1
 
       hyps = self.decoder.MapSentBatch(hyps)

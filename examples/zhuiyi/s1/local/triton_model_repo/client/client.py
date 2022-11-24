@@ -12,158 +12,175 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import multiprocessing
+import os
 from multiprocessing import Pool
 
-import argparse
-import os
-import tritonclient.grpc as grpcclient
-from utils import cal_cer
-from speech_client import *
 import numpy as np
+import tritonclient.grpc as grpcclient
+
+from speech_client import *
+from utils import (cal_cer, get_statistical_result, print_performance,
+                   value_counts)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8001',
-                        help='Inference server URL. Default is '
-                             'localhost:8001.')
-    parser.add_argument('--model_name',
-                        required=False,
-                        default='attention_rescoring',
-                        choices=['attention_rescoring',
-                                 'streaming_wenet'],
-                        help='the model to send request to')
-    parser.add_argument('--wavscp',
-                        type=str,
-                        required=False,
-                        default=None,
-                        help='audio_id \t wav_path')
-    parser.add_argument('--trans',
-                        type=str,
-                        required=False,
-                        default=None,
-                        help='audio_id \t text')
-    parser.add_argument('--data_dir',
-                        type=str,
-                        required=False,
-                        default=None,
-                        help='path prefix for wav_path in wavscp/audio_file')
-    parser.add_argument('--audio_file',
-                        type=str,
-                        required=False,
-                        default=None,
-                        help='single wav file path')
-    # below arguments are for streaming
-    # Please check onnx_config.yaml and train.yaml
-    parser.add_argument('--streaming',
-                        action="store_true",
-                        required=False)
-    parser.add_argument('--sample_rate',
-                        type=int,
-                        required=False,
-                        default=16000,
-                        help='sample rate used in training')
-    parser.add_argument('--frame_length_ms',
-                        type=int,
-                        required=False,
-                        default=25,
-                        help='frame length')
-    parser.add_argument('--frame_shift_ms',
-                        type=int,
-                        required=False,
-                        default=10,
-                        help='frame shift length')
-    parser.add_argument('--chunk_size',
-                        type=int,
-                        required=False,
-                        default=16,
-                        help='chunk size default is 16')
-    parser.add_argument('--context',
-                        type=int,
-                        required=False,
-                        default=7,
-                        help='subsampling context')
-    parser.add_argument('--subsampling',
-                        type=int,
-                        required=False,
-                        default=4,
-                        help='subsampling rate')
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-v',
+                      '--verbose',
+                      action="store_true",
+                      required=False,
+                      default=False,
+                      help='Enable verbose output')
+  parser.add_argument('-u',
+                      '--url',
+                      type=str,
+                      required=False,
+                      default='localhost:8001',
+                      help='Inference server URL. Default is '
+                      'localhost:8001.')
+  parser.add_argument('--model_name',
+                      required=False,
+                      default='attention_rescoring',
+                      choices=['attention_rescoring', 'streaming_wenet'],
+                      help='the model to send request to')
+  parser.add_argument('--wavscp',
+                      type=str,
+                      required=False,
+                      default=None,
+                      help='audio_id \t wav_path')
+  parser.add_argument('--trans',
+                      type=str,
+                      required=False,
+                      default=None,
+                      help='audio_id \t text')
+  parser.add_argument('--data_dir',
+                      type=str,
+                      required=False,
+                      default=None,
+                      help='path prefix for wav_path in wavscp/audio_file')
+  parser.add_argument('--audio_file',
+                      type=str,
+                      required=False,
+                      default=None,
+                      help='single wav file path')
+  # below arguments are for streaming
+  # Please check onnx_config.yaml and train.yaml
+  parser.add_argument('--streaming', action="store_true", required=False)
+  parser.add_argument('--sample_rate',
+                      type=int,
+                      required=False,
+                      default=16000,
+                      help='sample rate used in training')
+  parser.add_argument('--frame_length_ms',
+                      type=int,
+                      required=False,
+                      default=25,
+                      help='frame length')
+  parser.add_argument('--frame_shift_ms',
+                      type=int,
+                      required=False,
+                      default=10,
+                      help='frame shift length')
+  parser.add_argument('--chunk_size',
+                      type=int,
+                      required=False,
+                      default=16,
+                      help='chunk size default is 16')
+  parser.add_argument('--context',
+                      type=int,
+                      required=False,
+                      default=7,
+                      help='subsampling context')
+  parser.add_argument('--subsampling',
+                      type=int,
+                      required=False,
+                      default=4,
+                      help='subsampling rate')
+  parser.add_argument('--test_performence',
+                      type=bool,
+                      required=False,
+                      default=False,
+                      help='Enable performence test')
+  parser.add_argument('--silence_percent',
+                      type=float,
+                      required=False,
+                      default=0,
+                      help='silence percent in performence test')
 
-    FLAGS = parser.parse_args()
+  FLAGS = parser.parse_args()
 
-    # load data
-    filenames = []
-    transcripts = []
-    if FLAGS.audio_file is not None:
-        path = FLAGS.audio_file
+  # load data
+  filenames = []
+  transcripts = []
+  if FLAGS.audio_file is not None:
+    path = FLAGS.audio_file
+    if FLAGS.data_dir:
+      path = os.path.join(FLAGS.data_dir, path)
+    if os.path.exists(path):
+      filenames = [path]
+  elif FLAGS.wavscp is not None:
+    audio_data = {}
+    with open(FLAGS.wavscp, "r", encoding="utf-8") as f:
+      for line in f:
+        # aid, path = line.strip().split('\t')
+        aid, path = line.strip().split()
         if FLAGS.data_dir:
-            path = os.path.join(FLAGS.data_dir, path)
-        if os.path.exists(path):
-            filenames = [path]
-    elif FLAGS.wavscp is not None:
-        audio_data = {}
-        with open(FLAGS.wavscp, "r", encoding="utf-8") as f:
-            for line in f:
-                # aid, path = line.strip().split('\t')
-                aid, path = line.strip().split()
-                if FLAGS.data_dir:
-                    path = os.path.join(FLAGS.data_dir, path)
-                audio_data[aid] = {'path': path}
-        with open(FLAGS.trans, "r", encoding="utf-8") as f:
-            for line in f:
-                # aid, text = line.strip().split('\t')
-                aid, text = line.strip().split()
-                audio_data[aid]['text'] = text
-        for key, value in audio_data.items():
-            filenames.append(value['path'])
-            transcripts.append(value['text'])
+          path = os.path.join(FLAGS.data_dir, path)
+        audio_data[aid] = {'path': path}
+    with open(FLAGS.trans, "r", encoding="utf-8") as f:
+      for line in f:
+        # aid, text = line.strip().split('\t')
+        aid, text = line.strip().split()
+        audio_data[aid]['text'] = text
+    for key, value in audio_data.items():
+      filenames.append(value['path'])
+      transcripts.append(value['text'])
 
-    num_workers = multiprocessing.cpu_count() // 2
+  num_workers = multiprocessing.cpu_count() // 2
 
-    if FLAGS.streaming:
-        speech_client_cls = StreamingSpeechClient
-    else:
-        speech_client_cls = OfflineSpeechClient
+  if FLAGS.streaming:
+    speech_client_cls = StreamingSpeechClient
+  else:
+    speech_client_cls = OfflineSpeechClient
 
-    def single_job(client_files):
-        with grpcclient.InferenceServerClient(url=FLAGS.url,
-                                              verbose=FLAGS.verbose) as triton_client:
-            protocol_client = grpcclient
-            speech_client = speech_client_cls(triton_client, FLAGS.model_name,
-                                              protocol_client, FLAGS)
-            idx, audio_files = client_files
-            predictions = []
-            for li in audio_files:
-                result = speech_client.recognize(li, idx)
-                print("Recognized {}:{} , score: {}".format(li, result[0], result[1]))
-                # print("Recognized {}:{}".format(li, result[0]))
-                predictions += [result[0]]
-        return predictions
+  def single_job(client_files):
+    with grpcclient.InferenceServerClient(
+        url=FLAGS.url, verbose=FLAGS.verbose) as triton_client:
+      protocol_client = grpcclient
+      speech_client = speech_client_cls(triton_client, FLAGS.model_name,
+                                        protocol_client, FLAGS)
+      idx, audio_files = client_files
+      predictions = []
+      performence = []
+      for li in audio_files:
+        result = speech_client.recognize(li, idx)
+        print("Recognized {}:{} , score: {}".format(li, result[0], result[1]))
+        predictions += [result[0]]
+        performence += [result[2]]
+    return predictions, performence
 
-    # start to do inference
-    # Group requests in batches
-    predictions = []
-    tasks = []
-    splits = np.array_split(filenames, 400)
+  # start to do inference
+  # Group requests in batches
+  results = []
+  tasks = []
+  splits = np.array_split(filenames, 2)
 
-    for idx, per_split in enumerate(splits):
-        cur_files = per_split.tolist()
-        tasks.append((idx, cur_files))
+  for idx, per_split in enumerate(splits):
+    cur_files = per_split.tolist()
+    tasks.append((idx, cur_files))
 
-    with Pool(processes=400) as pool:
-        predictions = pool.map(single_job, tasks)
+  with Pool(processes=2) as pool:
+    results = pool.map(single_job, tasks)
 
-    predictions = [item for sublist in predictions for item in sublist]
-    if transcripts:
-        cer = cal_cer(predictions, transcripts)
-        print("CER is: {}".format(cer))
+  predictions = [item[0] for item in results]
+  predictions = [item for sublist in predictions for item in sublist]
+
+  if transcripts:
+    cer = cal_cer(predictions, transcripts)
+    print("CER is: {}".format(cer))
+
+  if FLAGS.test_performence:
+    performence = [item[1] for item in results]
+    print("性能数据:")
+    print_performance(performence)
