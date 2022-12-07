@@ -4,9 +4,9 @@ wenet的内部版本, 添加了我们自己的相关脚本, 最好能定期更�
 
 ## 依赖
 
-- Python==3.6
+- Python==3.8
 - base_utils: 内部的依赖库.
-- pytorch==v1.10.1
+- pytorch==v1.11.0
 - srilm
 
 ## 编译
@@ -14,9 +14,8 @@ wenet的内部版本, 添加了我们自己的相关脚本, 最好能定期更�
 参考wenet runtime相关文档, 主要是生成构建解码图时fst的相关程序和解码程序.
 
 ```bash
-cd runtime/server/x86/build
-cmake ..
-make -j 16
+cd runtime/libtorch
+mkdir build && cd build && cmake -DGRAPH_TOOLS=ON .. && cmake --build .
 ```
 
 ## 数据格式
@@ -152,17 +151,22 @@ export NCCL_P2P_DISABLE=1
 
    ```bash
    python3 -m local.self_learning.format_text -h
-   usage: format_text.py [-h] ori_text format_text
+   usage: format_text.py [-h] [--is_english] [--is_cantonese]
+                      ori_text format_text dict_path
 
    对原始文本进行处理, 以便后续构建语言模型.
 
    positional arguments:
-      ori_text     待处理文本.
-      format_text  处理后的文本.
-   
+   ori_text        待处理文本.
+   format_text     处理后的文本.
+   dict_path       分词使用的词典路径, 发音词典或者wenet模型文件夹下的lang_char.txt
+
    optional arguments:
-      -h, --help   show this help message and exit
+   -h, --help      show this help message and exit
+   --is_english    是否是英语, 默认否.
+   --is_cantonese  是否是粤语, 默认否.
    ```
+   - dict_path: `<model_dir>/lang_char.txt`
 
 2. 构造解码图
 
