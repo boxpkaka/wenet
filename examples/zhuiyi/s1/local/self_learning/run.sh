@@ -5,7 +5,7 @@
 . ./path.sh || exit 1
 
 stage=0
-stop_stage=3
+stop_stage=1
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
 # NFS is required if num_nodes > 1.
 num_nodes=1
@@ -130,44 +130,13 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
-  echo "$(date) stage 2: 导出script model."
   if [ ${average_checkpoint} == true ]; then
-    decode_checkpoint=$out_dir/avg_${average_num}.pt
-    echo "do model average and final checkpoint is $decode_checkpoint"
-    python wenet/bin/average_model.py \
-      --dst_model $decode_checkpoint \
-      --src_path $out_dir \
-      --num ${average_num} \
-      --val_best
+      decode_checkpoint=$out_dir/avg_${average_num}.pt
+      echo "do model average and final checkpoint is $decode_checkpoint"
+      python wenet/bin/average_model.py \
+        --dst_model $decode_checkpoint \
+        --src_path $out_dir \
+        --num ${average_num} \
+        --val_best
   fi
-  python wenet/bin/export_jit.py \
-    --config $out_dir/train.yaml \
-    --checkpoint $out_dir/avg_${average_num}.pt \
-    --output_file $out_dir/final.zip \
-    --output_quant_file $out_dir/asr.zip
-fi
-
-if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
-  echo "$(date) stage 3: 导出onnx model."
-  if [ ${average_checkpoint} == true ]; then
-    decode_checkpoint=$out_dir/avg_${average_num}.pt
-  fi
-  # 导出流式模型
-  onnx_dir=$out_dir/onnx/online_model
-  python wenet/bin/export_onnx_cpu.py \
-    --config $out_dir/train.yaml \
-    --checkpoint $out_dir/avg_${average_num}.pt \
-    --chunk_size 16 \
-    --output_dir $onnx_dir \
-    --num_decoding_left_chunks -1
-  
-  # 导出非流式模型
-  onnx_dir=$out_dir/onnx/offline_model
-  python wenet/bin/export_onnx_cpu.py \
-    --config $out_dir/train.yaml \
-    --checkpoint $out_dir/avg_${average_num}.pt \
-    --chunk_size -1 \
-    --output_dir $onnx_dir \
-    --num_decoding_left_chunks -1
-
 fi
