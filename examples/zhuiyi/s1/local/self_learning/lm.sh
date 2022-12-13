@@ -21,8 +21,8 @@ is_kn_smooth=false
 
 if [ $# != 3 ]; then
   echo "Usage: $0 [options] <self_learning_dir> <text> <out_dir>"
-  echo "self_learning_dir: 自学习文件夹路径."
-  echo "text: 调优需要的文本."
+  echo "self_learning_dir: 自学习文件夹路径, 一般放在发版模型文件夹下, 部分旧模型不支持."
+  echo "text: 调优需要的清洗后的文本."
   echo "out_dir: 输出文件夹."
   echo "--order: 默认3."
   echo "--lambda: 默认0.6."

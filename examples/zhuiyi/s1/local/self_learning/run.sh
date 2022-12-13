@@ -36,7 +36,7 @@ cpus=-1
 if [ $# != 3 ]; then
   echo "Usage: $0 [options] <data_dir> <self_learning_dir> <out_dir>"
   echo "data_dir: 调优数据文件夹, 需要包含train和dev."
-  echo "self_learning_dir: 自学习文件夹路径, 需要单独获取, 部分旧模型发版时已包含."
+  echo "self_learning_dir: 自学习文件夹路径, 一般放在发版模型文件夹下, 部分旧模型不支持."
   echo "out_dir: 调优模型保存路径."
   echo "--average_num: 默认5."
   echo "--gpus: 显卡编号, ','连接, 如'0,1,2,3'."

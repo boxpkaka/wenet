@@ -125,9 +125,9 @@ export NCCL_P2P_DISABLE=1
 
    ```bash
    ./local/self_learning/run.sh
-      Usage: ./local/self_learning/run.sh [options] <data_dir> <model_dir> <out_dir>
+      Usage: ./local/self_learning/run.sh [options] <data_dir> <self_learning_dir> <out_dir>
       data_dir: 调优数据文件夹, 需要包含train和dev.
-      model_dir: ASR模型文件夹, 需要包含self_learning文件夹.
+      self_learning_dir: 自学习文件夹路径, 一般放在发版模型文件夹下, 部分旧模型不支持.
       out_dir: 调优模型保存路径.
       --average_num: 默认5.
       --gpus: 显卡编号, ','连接, 如'0,1,2,3'.
@@ -140,8 +140,42 @@ export NCCL_P2P_DISABLE=1
    ```
 
    - data_dir为第一步数据准备中生成的训练数据文件夹.
+
+3. 模型导出
+  1. cpu推理模型包导出:
+
+   ```bash
+   ./local/self_learning/export/export_cpu_models.sh
+      Usage: local/self_learning/export/export_cpu_models.sh [options] <in_dir> <self_learning_dir> <out_dir>
+      in_dir: 训练完成的模型文件夹路径,需要包含train.yaml以及pytorch模型文件路径.
+      self_learning_dir: 自学习文件夹路径, 一般放在发版模型文件夹下, 部分旧模型不支持.
+      out_dir: 导出的模型推理文件夹路径.
+      --average_num: 默认5.
+      --conf_path: 配置文件路径,用于获取参数,一般为conf/asr.yaml,默认为空.
+   ```
+
+   - in_dir为第二步调优后的模型文件夹.
    - libtorch模型文件为`$out_dir/asr.zip`, 替换`$model_dir/libtorch_model/asr.zip`.
-   - onnx模型文件夹为`$out_dir/onnx/online_model`, `$out_dir/onnx/offline_model`, 分别替换`$model_dir/onnx_model/online_model`和`$model_dir/onnx_model/offline_model`下的相关文件.
+   - onnx模型文件夹为`$out_dir/onnx_model/online_model`, `$out_dir/onnx_model/offline_model`, 分别替换`$model_dir/onnx_model/online_model`和`$model_dir/onnx_model/offline_model`下的相关文件.
+
+  2. gpu推理模型包导出:
+
+   ```bash
+   ./local/self_learning/export/export_gpu_models.sh
+      Usage: local/self_learning/export/export_gpu_models.sh [options] <in_dir> <self_learning_dir> <out_dir>
+      in_dir: 训练完成的模型文件夹路径,需要包含train.yaml以及pytorch模型文件路径.
+      self_learning_dir: 自学习文件夹路径, 一般放在发版模型文件夹下, 部分旧模型不支持.
+      out_dir: 导出的模型推理文件夹路径.
+      --average_num: 默认5.
+      --conf_path: 配置文件路径,用于获取参数,一般为conf/asr.yaml,默认为空.
+   ```
+
+  - onnx流式模型文件夹为`$out_dir/onnx_model/online_model`, 包含decoder.onnx, encoder.onnx,
+   分别替换`$model_dir/model_repo_stateful/decoder/1/decoder.onnx`和
+   `$model_dir/model_repo_stateful/encoder/1/encoder.onnx`下的相关文件.
+  - onnx离线模型文件夹为`$out_dir/onnx_model/offline_model`, 包含decoder.onnx, encoder.onnx,
+   分别替换`$model_dir/model_repo/decoder/1/decoder.onnx`和
+   `$model_dir/model_repo/encoder/1/encoder.onnx`下的相关文件.
 
 ### 语言模型调优
 
@@ -172,12 +206,16 @@ export NCCL_P2P_DISABLE=1
 
    ```bash
    ./local/self_learning/lm.sh
-   Usage: ./local/self_learning/lm.sh [options] <model_dir> <text> <out_dir>
-   model_dir: 模型文件夹.
-   text: 调优需要的文本.
-   out_dir: 输出文件夹.
-   --order: 默认3.
-   --lambda: 默认0.85.
+      Usage: ./local/self_learning/lm.sh [options] <self_learning_dir> <text> <out_dir>
+      self_learning_dir: self_learning_dir: 自学习文件夹路径, 一般放在发版模型文件夹下, 部分旧模型不支持.
+      text: 调优需要的清洗后的文本.
+      out_dir: 输出文件夹.
+      --order: 默认3.
+      --lambda: 默认0.6.
+      --is_gpu_infer: 是否为gpu推理需要的lm文件, 默认否.
+      --is_kn_smooth: 是否为kneserney平滑算法, 默认否, 即使用wittenbell平滑.
    ```
 
    - 将`$out_dir/data/lang_test/TLG.fst`替换`$model_dir/graph/TLG.fst`.
+   - text 为第一步清洗后的文本
+   - --is_gpu_infer gpu推理需要的lm.bin文件可设置该参数为true生成.

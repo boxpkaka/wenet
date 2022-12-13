@@ -20,7 +20,7 @@ average_num=5
 if [ $# != 3 ]; then
   echo "Usage: $0 [options] <in_dir> <self_learning_dir> <out_dir>"
   echo "in_dir: 训练完成的模型文件夹路径,需要包含train.yaml以及pytorch模型文件路径."
-  echo "self_learning_dir: 自学习文件夹路径."
+  echo "self_learning_dir: 自学习文件夹路径, 一般放在发版模型文件夹下, 部分旧模型不支持."
   echo "out_dir: 导出的模型推理文件夹路径."
   echo "--average_num: 默认5."
   echo "--conf_path: 配置文件路径,用于获取参数,一般为conf/asr.yaml,默认为空."
