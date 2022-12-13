@@ -5,7 +5,7 @@
 . ./path.sh || exit 1
 
 stage=0
-stop_stage=1
+stop_stage=2
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
 # NFS is required if num_nodes > 1.
 num_nodes=1

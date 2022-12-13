@@ -5,17 +5,27 @@
 set -e
 . ./path.sh
 
+is_kn_smooth=false
+smooth_method="-wbdiscount -interpolate"
+
+. tools/parse_options.sh || exit 1
+
 if [ $# != 3 ]; then
   echo "Usage: $0 [options] <text> <lexicon> <lm_dir>"
   echo "text: 文本路径."
   echo "lexicon: 词典路径."
   echo "lm_dir: 语言模型文件夹, 用来保存arpa模型和相关文件."
+  echo "--is_kn_smooth: 是否使用kneserney平滑, 默认否, 即使用wittenbell平滑."
   exit 1
 fi
 
 text=$1
 lexicon=$2
 dir=$3
+
+if [ ${is_kn_smooth} == true ];then
+  smooth_method="-kndiscount -interpolate"
+fi
 
 for f in "$text" "$lexicon"; do
   [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
@@ -49,4 +59,4 @@ cat $dir/unigram.counts | awk '{print $2}' | cat - <(echo "<s>"; echo "</s>" ) >
 cp $cleantext  $dir/train
 
 ngram-count -text $dir/train -order 3 -limit-vocab -vocab $dir/wordlist -unk \
-  -map-unk "<UNK>" -kndiscount -interpolate -lm $dir/lm.arpa
+  -map-unk "<UNK>" ${smooth_method} -lm $dir/lm.arpa
