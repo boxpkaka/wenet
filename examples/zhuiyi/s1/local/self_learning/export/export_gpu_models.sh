@@ -42,25 +42,27 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
   echo "$(date) stage 0: 导出onnx model."
 
   # 导出流式模型
-  onnx_dir=$out_dir/onnx/online_model
+  onnx_dir=${out_dir}/onnx_model/online_model
+  mkdir -p ${onnx_dir}
   python local/triton_model_repo/scripts/export_onnx_gpu.py \
     --config ${in_dir}/train.yaml \
     --cmvn_file ${in_dir}/global_cmvn \
     --checkpoint ${in_dir}/avg_${average_num}.pt \
     --decoding_chunk_size ${online_chunk_size} \
     --beam_size ${beam_size} \
-    --output_onnx_dir ${out_dir} \
+    --output_onnx_dir ${onnx_dir} \
     --num_decoding_left_chunks ${num_decoding_left_chunks}
 
   # 导出非流式模型
-  onnx_dir=$out_dir/onnx/offline_model
+  onnx_dir=$out_dir/onnx_model/offline_model
+  mkdir -p ${onnx_dir}
   python local/triton_model_repo/scripts/export_onnx_gpu.py \
     --config ${in_dir}/train.yaml \
     --cmvn_file ${in_dir}/global_cmvn \
     --checkpoint ${in_dir}/avg_${average_num}.pt \
-    --decoding_chunk_size $offline_chunk_size \
+    --decoding_chunk_size ${offline_chunk_size} \
     --beam_size ${beam_size} \
-    --output_onnx_dir ${out_dir} \
+    --output_onnx_dir ${onnx_dir} \
     --num_decoding_left_chunks ${num_decoding_left_chunks}
 
 fi

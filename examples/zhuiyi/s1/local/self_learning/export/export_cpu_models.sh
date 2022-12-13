@@ -51,21 +51,28 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   echo "$(date) stage 1: 导出onnx model."
 
   # 导出流式模型
-  onnx_dir=$out_dir/onnx/online_model
+  onnx_dir=$out_dir/onnx_model/online_model
   python wenet/bin/export_onnx_cpu.py \
     --config $in_dir/train.yaml \
     --checkpoint $in_dir/avg_${average_num}.pt \
     --chunk_size ${online_chunk_size} \
     --output_dir $onnx_dir \
     --num_decoding_left_chunks ${num_decoding_left_chunks}
+
+  mv ${onnx_dir}/ctc.quant.onnx ${onnx_dir}/ctc.onnx
+  mv ${onnx_dir}/decoder.quant.onnx ${onnx_dir}/decoder.onnx
+  mv ${onnx_dir}/encoder.quant.onnx ${onnx_dir}/encoder.onnx
   
   # 导出非流式模型
-  onnx_dir=$out_dir/onnx/offline_model
+  onnx_dir=$out_dir/onnx_model/offline_model
   python wenet/bin/export_onnx_cpu.py \
-    --config $out_dir/train.yaml \
-    --checkpoint $out_dir/avg_${average_num}.pt \
+    --config $in_dir/train.yaml \
+    --checkpoint ${in_dir}/avg_${average_num}.pt \
     --chunk_size ${offline_chunk_size} \
-    --output_dir $onnx_dir \
+    --output_dir ${onnx_dir} \
     --num_decoding_left_chunks ${num_decoding_left_chunks}
 
+  mv ${onnx_dir}/ctc.quant.onnx ${onnx_dir}/ctc.onnx
+  mv ${onnx_dir}/decoder.quant.onnx ${onnx_dir}/decoder.onnx
+  mv ${onnx_dir}/encoder.quant.onnx ${onnx_dir}/encoder.onnx
 fi
