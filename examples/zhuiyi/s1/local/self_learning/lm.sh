@@ -26,7 +26,6 @@ if [ $# != 3 ]; then
   echo "out_dir: 输出文件夹."
   echo "--order: 默认3."
   echo "--lambda: 默认0.6."
-  echo "--is_gpu_infer: 是否为gpu推理需要的lm文件, 默认否."
   echo "--is_kn_smooth: 是否为kneserney平滑算法, 默认否, 即使用wittenbell平滑."
   exit 1
 fi
@@ -53,12 +52,6 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
-  if [[ ${is_gpu_infer} == true ]];
-  then
-    echo "$(date) stage 2: Build lm.bin."
-    build_binary -s ${lm}/lm.arpa $out_dir/lm.bin || exit 1
-  else
     echo "$(date) stage 2: Build decoding TLG."
     tools/fst/make_tlg.sh ${lm} $data/local/lang $out_dir/data/lang_test || exit 1
-  fi
 fi
