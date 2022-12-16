@@ -4,6 +4,8 @@
 
 . ./path.sh || exit 1
 
+# TODO(fangcheng): set -e
+
 stage=0
 stop_stage=1
 
@@ -32,7 +34,7 @@ self_learning_dir=$2
 out_dir=$3
 
 
-if [[ $conf_path != "" ]]; then
+if [[ $conf_path != "" ]]; then # TODO(fangcheng): 模型文件夹获取
   num_decoding_left_chunks=`sed '/  num_left_chunks:/!d;s/.*://' $conf_path`
   beam_size=`sed '/  beam:/!d;s/.*://' $conf_path`
 fi
@@ -59,7 +61,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     --output_dir $onnx_dir \
     --num_decoding_left_chunks ${num_decoding_left_chunks}
 
-  mv ${onnx_dir}/ctc.quant.onnx ${onnx_dir}/ctc.onnx
+  mv ${onnx_dir}/ctc.quant.onnx ${onnx_dir}/ctc.onnx # TODO(fangcheng): 判断是否量化
   mv ${onnx_dir}/decoder.quant.onnx ${onnx_dir}/decoder.onnx
   mv ${onnx_dir}/encoder.quant.onnx ${onnx_dir}/encoder.onnx
   

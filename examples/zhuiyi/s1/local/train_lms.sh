@@ -15,7 +15,7 @@ if [ $# != 3 ]; then
   echo "text: 文本路径."
   echo "lexicon: 词典路径."
   echo "lm_dir: 语言模型文件夹, 用来保存arpa模型和相关文件."
-  echo "--is_kn_smooth: 是否使用kneserney平滑, 默认否, 即使用wittenbell平滑."
+  echo "--is_kn_smooth: 是否使用kneserney平滑, 默认否, 即使用wittenbell平滑." # TODO(fangcheng): 默认值
   exit 1
 fi
 

@@ -35,7 +35,7 @@ mkdir -p $dir $tmpdir
 
 [ -f path.sh ] && . ./path.sh
 
-export LC_ALL=C
+export LC_ALL=C # TODO(fangcheng): 去掉
 
 cp $srcdir/units.txt $dir
 
