@@ -127,9 +127,9 @@ export NCCL_P2P_DISABLE=1
 
    ```bash
    ./local/self_learning/run.sh
-      Usage: ./local/self_learning/run.sh [options] <data_dir> <self_learning_dir> <out_dir>
+      Usage: ./local/self_learning/run.sh [options] <data_dir> <model_dir> <out_dir>
       data_dir: 调优数据文件夹, 需要包含train和dev.
-      self_learning_dir: 自学习文件夹路径, 一般放在发版模型文件夹下, 部分旧模型不支持.
+      model_dir: 发版模型文件夹, 需包含self_learning文件夹, 部分旧模型不支持.
       out_dir: 调优模型保存路径.
       --average_num: 默认5.
       --gpus: 显卡编号, ','连接, 如'0,1,2,3'.
@@ -148,12 +148,11 @@ export NCCL_P2P_DISABLE=1
 
    ```bash
    ./local/self_learning/export/export_cpu_models.sh
-      Usage: local/self_learning/export/export_cpu_models.sh [options] <in_dir> <self_learning_dir> <out_dir>
+      Usage: ./local/self_learning/export/export_cpu_models.sh [options] <in_dir> <model_dir> <out_dir>
       in_dir: 训练完成的模型文件夹路径,需要包含train.yaml以及pytorch模型文件路径.
-      self_learning_dir: 自学习文件夹路径, 一般放在发版模型文件夹下, 部分旧模型不支持.
+      model_dir: 发版模型文件夹, 需包含conf/asr.yaml文件.
       out_dir: 导出的模型推理文件夹路径.
       --average_num: 默认5.
-      --conf_path: 配置文件路径,用于获取参数,一般为conf/asr.yaml,默认为空.
    ```
 
    - in_dir为第二步调优后的模型文件夹.

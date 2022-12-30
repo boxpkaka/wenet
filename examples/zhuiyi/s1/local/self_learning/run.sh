@@ -23,6 +23,7 @@ cmvn=true
 # use average_checkpoint will get better result
 average_checkpoint=true
 average_num=5
+bpe_model=
 gpus=""
 lr=0.0004
 batch_size=16
@@ -119,7 +120,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
       --override_config "accum_grad ${accum_grad}" \
       --data_type $data_type \
       --symbol_table $dict \
-      ${bpe_model:+--bpe_model $bpemodel.model} \
+      ${bpe_model:+--bpe_model $bpe_model} \
       --train_data $data_dir/${train_set}/data.list \
       --cv_data $data_dir/$dev_set/data.list \
       ${checkpoint:+--checkpoint $checkpoint} \
