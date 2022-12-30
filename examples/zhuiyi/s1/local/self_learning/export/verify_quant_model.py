@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Created by fangcheng on 2022/12/28
-"""local模块."""
+"""local模块.""" #TODO(fangcheng): 文档
 import logging
-import onnx
+import onnx # TODO(fangchneg): 顺序
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -31,7 +31,7 @@ def __cmd():
   parser = ArgumentParser(description=desc)
   parser.add_argument("onnx_model", type=Path, help="待验证的onnx模型路径.")
   args = parser.parse_args()
-  verify_rlt = verify_quant(args.onnx_model)
+  verify_rlt = verify_quant(args.onnx_model)  # TODO(fangchneg): 合并
   print(f"is_quant={verify_rlt}")
 
 
