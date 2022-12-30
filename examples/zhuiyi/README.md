@@ -6,7 +6,9 @@ wenet的内部版本, 添加了我们自己的相关脚本, 最好能定期更�
 
 - Python==3.8
 - base_utils: 内部的依赖库.
-- pytorch==v1.11.0 # TODO(fangcheng): 1.12.1, onnx 1.12.1
+- pytorch==v1.12.1
+- onnx==v1.12.0
+- onnxruntime==v1.12.1
 - srilm
 
 ## 编译
@@ -156,7 +158,7 @@ export NCCL_P2P_DISABLE=1
 
    - in_dir为第二步调优后的模型文件夹.
    - libtorch模型文件为`$out_dir/asr.zip`, 替换`$model_dir/libtorch_model/asr.zip`.
-   - onnx模型文件夹为`$out_dir/onnx_model/online_model`, `$out_dir/onnx_model/offline_model`, 分别替换`$model_dir/onnx_model/online_model`和`$model_dir/onnx_model/offline_model`下的相关文件. # TODO(fangcheng): onnx_model
+   - onnx模型文件夹为`$out_dir/onnx_model`, 替换`$model_dir/onnx_model`.
 
 
 ### 语言模型调优
@@ -175,7 +177,7 @@ export NCCL_P2P_DISABLE=1
    positional arguments:
    ori_text        待处理文本.
    format_text     处理后的文本.
-   dict_path       分词使用的词典路径, 发音词典或者wenet模型文件夹下的lang_char.txt # TODO(fangcheng): wenet模型文件夹
+   dict_path       分词使用的词典路径, 发音词典或者asr模型文件夹下的 lang_char.txt
 
    optional arguments:
    -h, --help      show this help message and exit
@@ -188,8 +190,8 @@ export NCCL_P2P_DISABLE=1
 
    ```bash
    ./local/self_learning/lm.sh
-      Usage: ./local/self_learning/lm.sh [options] <self_learning_dir> <text> <out_dir>
-      self_learning_dir: 自学习文件夹路径, 一般放在发版模型文件夹下, 部分旧模型不支持.
+      Usage: ./local/self_learning/lm.sh [options] <model_dir> <text> <out_dir>
+      model_dir: 发版模型文件夹, 需包含self_learning文件夹, 部分旧模型不支持.
       text: 调优需要的清洗后的文本.
       out_dir: 输出文件夹.
       --order: 默认3.

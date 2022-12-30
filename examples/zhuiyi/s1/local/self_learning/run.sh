@@ -34,9 +34,9 @@ cpus=-1
 . tools/parse_options.sh || exit 1
 
 if [ $# != 3 ]; then
-  echo "Usage: $0 [options] <data_dir> <self_learning_dir> <out_dir>"
+  echo "Usage: $0 [options] <data_dir> <model_dir> <out_dir>"
   echo "data_dir: 调优数据文件夹, 需要包含train和dev."
-  echo "self_learning_dir: 自学习文件夹路径, 一般放在发版模型文件夹下, 部分旧模型不支持."
+  echo "model_dir: 发版模型文件夹, 需包含self_learning文件夹, 部分旧模型不支持."
   echo "out_dir: 调优模型保存路径."
   echo "--average_num: 默认5."
   echo "--gpus: 显卡编号, ','连接, 如'0,1,2,3'."
@@ -51,13 +51,19 @@ fi
 
 export CUDA_VISIBLE_DEVICES=$gpus
 data_dir=$1
-self_learning=$2
+model_dir=$2
 out_dir=$3
 
-train_config=$self_learning/train.yaml
-dict=$self_learning/data/dict/lang_char.txt
-checkpoint=$self_learning/init.pt
-cmvn_dir=$self_learning/global_cmvn
+self_learning=$model_dir/self_learning
+
+train_config=$self_learning/exp/train.yaml
+dict=$model_dir/lang_char.txt
+checkpoint=$self_learning/exp/init.pt
+cmvn_dir=$self_learning/exp/global_cmvn
+
+if [ -f $self_learning/data/lang_char/bpe.model ]; then
+  bpe_model=$self_learning/data/lang_char/bpe.model
+fi
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
   echo "$(date) stage 0: 生成指定格式的数据."
@@ -113,6 +119,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
       --override_config "accum_grad ${accum_grad}" \
       --data_type $data_type \
       --symbol_table $dict \
+      ${bpe_model:+--bpe_model $bpemodel.model} \
       --train_data $data_dir/${train_set}/data.list \
       --cv_data $data_dir/$dev_set/data.list \
       ${checkpoint:+--checkpoint $checkpoint} \

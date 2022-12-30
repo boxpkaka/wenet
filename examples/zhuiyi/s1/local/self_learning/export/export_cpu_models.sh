@@ -2,9 +2,8 @@
 # Created by fangcheng on 2022/12/07
 # 导出cpu推理需要的模型文件
 
+set -e
 . ./path.sh || exit 1
-
-# TODO(fangcheng): set -e
 
 stage=0
 stop_stage=1
@@ -20,25 +19,26 @@ average_num=5
 . tools/parse_options.sh || exit 1
 
 if [ $# != 3 ]; then
-  echo "Usage: $0 [options] <in_dir> <self_learning_dir> <out_dir>"
+  echo "Usage: $0 [options] <in_dir> <model_dir> <out_dir>"
   echo "in_dir: 训练完成的模型文件夹路径,需要包含train.yaml以及pytorch模型文件路径."
-  echo "self_learning_dir: 自学习文件夹路径, 一般放在发版模型文件夹下, 部分旧模型不支持."
+  echo "model_dir: 发版模型文件夹, 需包含conf/asr.yaml文件."
   echo "out_dir: 导出的模型推理文件夹路径."
   echo "--average_num: 默认5."
-  echo "--conf_path: 配置文件路径,用于获取参数,一般为conf/asr.yaml,默认为空."
   exit 1
 fi
 
 in_dir=$1
-self_learning_dir=$2
+model_dir=$2
 out_dir=$3
 
+conf_path=${model_dir}/conf/asr.yaml
 
-if [[ $conf_path != "" ]]; then # TODO(fangcheng): 模型文件夹获取
-  num_decoding_left_chunks=`sed '/  num_left_chunks:/!d;s/.*://' $conf_path`
-  beam_size=`sed '/  beam:/!d;s/.*://' $conf_path`
+mkdir -p $out_dir
+
+if [[ $conf_path != "" ]]; then
+  num_decoding_left_chunks=`python local/self_learning/export/get_yaml_item.py $conf_path decoder_config num_left_chunks`
+  beam_size=`python local/self_learning/export/get_yaml_item.py $conf_path decoder_config beam`
 fi
-
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
   echo "$(date) stage 0: 导出script model."
@@ -51,7 +51,6 @@ fi
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   echo "$(date) stage 1: 导出onnx model."
-
   # 导出流式模型
   onnx_dir=$out_dir/onnx_model/online_model
   python wenet/bin/export_onnx_cpu.py \
@@ -61,10 +60,16 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     --output_dir $onnx_dir \
     --num_decoding_left_chunks ${num_decoding_left_chunks}
 
-  mv ${onnx_dir}/ctc.quant.onnx ${onnx_dir}/ctc.onnx # TODO(fangcheng): 判断是否量化
-  mv ${onnx_dir}/decoder.quant.onnx ${onnx_dir}/decoder.onnx
-  mv ${onnx_dir}/encoder.quant.onnx ${onnx_dir}/encoder.onnx
-  
+  is_online_quant=`python local/self_learning/export/verify_quant_model.py \
+                   ${model_dir}/onnx_model/online_model/ctc.onnx`
+  is_online_quant=`echo $is_online_quant | cut -d "=" -f 2`
+  if [[ ${is_online_quant} == 'True' ]];then
+    mv ${onnx_dir}/ctc.quant.onnx ${onnx_dir}/ctc.onnx
+    mv ${onnx_dir}/decoder.quant.onnx ${onnx_dir}/decoder.onnx
+    mv ${onnx_dir}/encoder.quant.onnx ${onnx_dir}/encoder.onnx
+  else
+    rm -f ${onnx_dir}/*.quant.onnx
+  fi
   # 导出非流式模型
   onnx_dir=$out_dir/onnx_model/offline_model
   python wenet/bin/export_onnx_cpu.py \
@@ -74,7 +79,14 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     --output_dir ${onnx_dir} \
     --num_decoding_left_chunks ${num_decoding_left_chunks}
 
-  mv ${onnx_dir}/ctc.quant.onnx ${onnx_dir}/ctc.onnx
-  mv ${onnx_dir}/decoder.quant.onnx ${onnx_dir}/decoder.onnx
-  mv ${onnx_dir}/encoder.quant.onnx ${onnx_dir}/encoder.onnx
+  is_offline_quant=`python local/self_learning/export/verify_quant_model.py \
+                    ${model_dir}/onnx_model/offline_model/ctc.onnx`
+  is_offline_quant=`echo $is_offline_quant | cut -d "=" -f 2`
+  if [[ ${is_offline_quant} == 'True' ]];then
+    mv ${onnx_dir}/ctc.quant.onnx ${onnx_dir}/ctc.onnx
+    mv ${onnx_dir}/decoder.quant.onnx ${onnx_dir}/decoder.onnx
+    mv ${onnx_dir}/encoder.quant.onnx ${onnx_dir}/encoder.onnx
+  else
+    rm -f ${onnx_dir}/*.quant.onnx
+  fi
 fi

@@ -18,7 +18,7 @@ def foramt_text(ori_text, format_text, dict_path, is_english=False,
   Args:
      ori_text: 带格式化的文件.
      format_text: 格式化后的文件.
-     dict_path: 分词使用的词典路径, 发音词典或者kaldi的words.txt.
+     dict_path: 分词使用的词典路径, 发音词典或者asr模型文件夹下的lang_char.txt.
      is_english: 是否是英语, 默认否.
      is_cantonese: 是否是粤语, 默认否.
   """
@@ -41,8 +41,8 @@ def __cmd():
   parser.add_argument("ori_text", type=Path, help="待处理文本.")
   parser.add_argument("format_text", type=Path, help="处理后的文本.")
   parser.add_argument("dict_path", type=Path,
-                      help="分词使用的词典路径, 发音词典或者wenet模型文件夹下的\
-                            lang_char.txt") # TODO(fangcheng): wenet模型文件夹
+                      help="分词使用的词典路径, 发音词典或者asr模型文件夹下的\
+                            lang_char.txt")
   parser.add_argument("--is_english", default=False, action="store_true",
                       help="是否是英语, 默认否.")
   parser.add_argument("--is_cantonese", default=False, action="store_true",
