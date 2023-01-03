@@ -4,9 +4,11 @@ wenet的内部版本, 添加了我们自己的相关脚本, 最好能定期更�
 
 ## 依赖
 
-- Python==3.6
+- Python==3.8
 - base_utils: 内部的依赖库.
-- pytorch==v1.10.1
+- pytorch==v1.12.1
+- onnx==v1.12.0
+- onnxruntime==v1.12.1
 - srilm
 
 ## 编译
@@ -14,9 +16,8 @@ wenet的内部版本, 添加了我们自己的相关脚本, 最好能定期更�
 参考wenet runtime相关文档, 主要是生成构建解码图时fst的相关程序和解码程序.
 
 ```bash
-cd runtime/server/x86/build
-cmake ..
-make -j 16
+cd runtime/libtorch
+mkdir build && cd build && cmake -DGRAPH_TOOLS=ON .. && cmake --build .
 ```
 
 ## 数据格式
@@ -128,7 +129,7 @@ export NCCL_P2P_DISABLE=1
    ./local/self_learning/run.sh
       Usage: ./local/self_learning/run.sh [options] <data_dir> <model_dir> <out_dir>
       data_dir: 调优数据文件夹, 需要包含train和dev.
-      model_dir: ASR模型文件夹, 需要包含self_learning文件夹.
+      model_dir: 发版模型文件夹, 需包含self_learning文件夹, 部分旧模型不支持.
       out_dir: 调优模型保存路径.
       --average_num: 默认5.
       --gpus: 显卡编号, ','连接, 如'0,1,2,3'.
@@ -141,8 +142,23 @@ export NCCL_P2P_DISABLE=1
    ```
 
    - data_dir为第一步数据准备中生成的训练数据文件夹.
+
+3. 模型导出
+  1. cpu推理模型包导出:
+
+   ```bash
+   ./local/self_learning/export/export_cpu_models.sh
+      Usage: ./local/self_learning/export/export_cpu_models.sh [options] <in_dir> <model_dir> <out_dir>
+      in_dir: 训练完成的模型文件夹路径,需要包含train.yaml以及pytorch模型文件路径.
+      model_dir: 发版模型文件夹, 需包含conf/asr.yaml文件.
+      out_dir: 导出的模型推理文件夹路径.
+      --average_num: 默认5.
+   ```
+
+   - in_dir为第二步调优后的模型文件夹.
    - libtorch模型文件为`$out_dir/asr.zip`, 替换`$model_dir/libtorch_model/asr.zip`.
-   - onnx模型文件夹为`$out_dir/onnx/online_model`, `$out_dir/onnx/offline_model`, 分别替换`$model_dir/onnx_model/online_model`和`$model_dir/onnx_model/offline_model`下的相关文件.
+   - onnx模型文件夹为`$out_dir/onnx_model`, 替换`$model_dir/onnx_model`.
+
 
 ### 语言模型调优
 
@@ -152,28 +168,35 @@ export NCCL_P2P_DISABLE=1
 
    ```bash
    python3 -m local.self_learning.format_text -h
-   usage: format_text.py [-h] ori_text format_text
+   usage: format_text.py [-h] [--is_english] [--is_cantonese]
+                      ori_text format_text dict_path
 
    对原始文本进行处理, 以便后续构建语言模型.
 
    positional arguments:
-      ori_text     待处理文本.
-      format_text  处理后的文本.
-   
+   ori_text        待处理文本.
+   format_text     处理后的文本.
+   dict_path       分词使用的词典路径, 发音词典或者asr模型文件夹下的 lang_char.txt
+
    optional arguments:
-      -h, --help   show this help message and exit
+   -h, --help      show this help message and exit
+   --is_english    是否是英语, 默认否.
+   --is_cantonese  是否是粤语, 默认否.
    ```
+   - dict_path: `<model_dir>/lang_char.txt`
 
 2. 构造解码图
 
    ```bash
    ./local/self_learning/lm.sh
-   Usage: ./local/self_learning/lm.sh [options] <model_dir> <text> <out_dir>
-   model_dir: 模型文件夹.
-   text: 调优需要的文本.
-   out_dir: 输出文件夹.
-   --order: 默认3.
-   --lambda: 默认0.85.
+      Usage: ./local/self_learning/lm.sh [options] <model_dir> <text> <out_dir>
+      model_dir: 发版模型文件夹, 需包含self_learning文件夹, 部分旧模型不支持.
+      text: 调优需要的清洗后的文本.
+      out_dir: 输出文件夹.
+      --order: 默认3.
+      --lambda: 默认0.6.
+      --is_kn_smooth: 是否为kneserney平滑算法, 默认否, 即使用wittenbell平滑.
    ```
 
    - 将`$out_dir/data/lang_test/TLG.fst`替换`$model_dir/graph/TLG.fst`.
+   - text 为第一步清洗后的文本

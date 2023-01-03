@@ -5,7 +5,7 @@
 . ./path.sh || exit 1
 
 stage=0
-stop_stage=3
+stop_stage=2
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
 # NFS is required if num_nodes > 1.
 num_nodes=1
@@ -23,6 +23,7 @@ cmvn=true
 # use average_checkpoint will get better result
 average_checkpoint=true
 average_num=5
+bpe_model=
 gpus=""
 lr=0.0004
 batch_size=16
@@ -34,9 +35,9 @@ cpus=-1
 . tools/parse_options.sh || exit 1
 
 if [ $# != 3 ]; then
-  echo "Usage: $0 [options] <data_dir> <self_learning_dir> <out_dir>"
+  echo "Usage: $0 [options] <data_dir> <model_dir> <out_dir>"
   echo "data_dir: 调优数据文件夹, 需要包含train和dev."
-  echo "self_learning_dir: 自学习文件夹路径, 需要单独获取, 部分旧模型发版时已包含."
+  echo "model_dir: 发版模型文件夹, 需包含self_learning文件夹, 部分旧模型不支持."
   echo "out_dir: 调优模型保存路径."
   echo "--average_num: 默认5."
   echo "--gpus: 显卡编号, ','连接, 如'0,1,2,3'."
@@ -51,13 +52,19 @@ fi
 
 export CUDA_VISIBLE_DEVICES=$gpus
 data_dir=$1
-self_learning=$2
+model_dir=$2
 out_dir=$3
 
-train_config=$self_learning/train.yaml
-dict=$self_learning/data/dict/lang_char.txt
-checkpoint=$self_learning/init.pt
-cmvn_dir=$self_learning/global_cmvn
+self_learning=$model_dir/self_learning
+
+train_config=$self_learning/exp/train.yaml
+dict=$model_dir/lang_char.txt
+checkpoint=$self_learning/exp/init.pt
+cmvn_dir=$self_learning/exp/global_cmvn
+
+if [ -f $self_learning/data/lang_char/bpe.model ]; then
+  bpe_model=$self_learning/data/lang_char/bpe.model
+fi
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
   echo "$(date) stage 0: 生成指定格式的数据."
@@ -113,6 +120,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
       --override_config "accum_grad ${accum_grad}" \
       --data_type $data_type \
       --symbol_table $dict \
+      ${bpe_model:+--bpe_model $bpe_model} \
       --train_data $data_dir/${train_set}/data.list \
       --cv_data $data_dir/$dev_set/data.list \
       ${checkpoint:+--checkpoint $checkpoint} \
@@ -130,44 +138,13 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
-  echo "$(date) stage 2: 导出script model."
   if [ ${average_checkpoint} == true ]; then
-    decode_checkpoint=$out_dir/avg_${average_num}.pt
-    echo "do model average and final checkpoint is $decode_checkpoint"
-    python wenet/bin/average_model.py \
-      --dst_model $decode_checkpoint \
-      --src_path $out_dir \
-      --num ${average_num} \
-      --val_best
+      decode_checkpoint=$out_dir/avg_${average_num}.pt
+      echo "do model average and final checkpoint is $decode_checkpoint"
+      python wenet/bin/average_model.py \
+        --dst_model $decode_checkpoint \
+        --src_path $out_dir \
+        --num ${average_num} \
+        --val_best
   fi
-  python wenet/bin/export_jit.py \
-    --config $out_dir/train.yaml \
-    --checkpoint $out_dir/avg_${average_num}.pt \
-    --output_file $out_dir/final.zip \
-    --output_quant_file $out_dir/asr.zip
-fi
-
-if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
-  echo "$(date) stage 3: 导出onnx model."
-  if [ ${average_checkpoint} == true ]; then
-    decode_checkpoint=$out_dir/avg_${average_num}.pt
-  fi
-  # 导出流式模型
-  onnx_dir=$out_dir/onnx/online_model
-  python wenet/bin/export_onnx_cpu.py \
-    --config $out_dir/train.yaml \
-    --checkpoint $out_dir/avg_${average_num}.pt \
-    --chunk_size 16 \
-    --output_dir $onnx_dir \
-    --num_decoding_left_chunks -1
-  
-  # 导出非流式模型
-  onnx_dir=$out_dir/onnx/offline_model
-  python wenet/bin/export_onnx_cpu.py \
-    --config $out_dir/train.yaml \
-    --checkpoint $out_dir/avg_${average_num}.pt \
-    --chunk_size -1 \
-    --output_dir $onnx_dir \
-    --num_decoding_left_chunks -1
-
 fi
