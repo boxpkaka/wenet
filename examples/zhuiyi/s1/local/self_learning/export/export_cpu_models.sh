@@ -35,9 +35,9 @@ conf_path=${model_dir}/conf/asr.yaml
 
 mkdir -p $out_dir
 
-if [[ $conf_path != "" ]]; then # TODO(fangcheng): shell读配置
-  num_decoding_left_chunks=`python local/self_learning/export/get_yaml_item.py $conf_path decoder_config num_left_chunks`
-  beam_size=`python local/self_learning/export/get_yaml_item.py $conf_path decoder_config beam`
+if [[ $conf_path != "" ]]; then
+  num_decoding_left_chunks=`yq .decoder_config.num_left_chunks $conf_path`
+  beam_size=`yq .decoder_config.beam $conf_path`
 fi
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
@@ -62,7 +62,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
   is_online_quant=`python local/self_learning/export/verify_quant_model.py \
                    ${model_dir}/onnx_model/online_model/ctc.onnx`
-  is_online_quant=`echo $is_online_quant | cut -d "=" -f 2` #TODO(fangcheng): cut 命令, grep
+  is_online_quant=`echo $is_online_quant | grep "is_quant=.*" -o | cut -d "=" -f 2`
   if [[ ${is_online_quant} == 'True' ]];then
     mv ${onnx_dir}/ctc.quant.onnx ${onnx_dir}/ctc.onnx
     mv ${onnx_dir}/decoder.quant.onnx ${onnx_dir}/decoder.onnx
@@ -81,7 +81,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
   is_offline_quant=`python local/self_learning/export/verify_quant_model.py \
                     ${model_dir}/onnx_model/offline_model/ctc.onnx`
-  is_offline_quant=`echo $is_offline_quant | cut -d "=" -f 2` #TODO(fangcheng): cut 命令, grep
+  is_offline_quant=`echo $is_offline_quant | grep "is_quant=.*" -o | cut -d "=" -f 2`
   if [[ ${is_offline_quant} == 'True' ]];then
     mv ${onnx_dir}/ctc.quant.onnx ${onnx_dir}/ctc.onnx
     mv ${onnx_dir}/decoder.quant.onnx ${onnx_dir}/decoder.onnx
