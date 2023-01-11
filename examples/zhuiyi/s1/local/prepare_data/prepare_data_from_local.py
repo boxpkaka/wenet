@@ -160,11 +160,16 @@ def gen_wenet_data(data_dir: Path, wav_conf, textgrid_conf, biz_name,
   wav_utts_list = corpus.get_wav_utts_list(
       filter_mty=True, aim_channel=(textgrid_conf.tg_channel,))
 
+  kaldi_data = []
+  for wav, utterances in wav_utts_list:
+    for utt in utterances:
+      kaldi_data.append((wav, [utt]))
+
   random.seed(777)
-  random.shuffle(wav_utts_list)
-  split = min(int(len(wav_utts_list) * dev_splits), 1000)
-  train = wav_utts_list[:-split]
-  dev = wav_utts_list[-split:]
+  random.shuffle(kaldi_data)
+  split = min(int(len(kaldi_data) * dev_splits), 1000)
+  train = kaldi_data[:-split]
+  dev = kaldi_data[-split:]
 
   gen_data_by_wav_utts(train, data_dir / "wavs" / "train", data_dir / "train",
                        nj=nj)

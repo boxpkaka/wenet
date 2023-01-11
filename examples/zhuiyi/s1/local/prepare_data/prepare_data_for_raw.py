@@ -45,11 +45,16 @@ def write_wav_multithread(wav_utts_list, wav_dir: Path, pad_length, nj):
       wav_dir: 生成音频的路径.
       nj: 任务数.
   """
-  splits = np.array_split(wav_utts_list, nj)
+  if nj > len(wav_utts_list):
+    raise ValueError(f"wav_utts列表长度{len(wav_utts_list)}需要大于任务数{nj}.")
+
+  size = len(wav_utts_list) // nj
+  splits = [wav_utts_list[i*size:(i+1)*size] for i in range(nj-1)]
+  splits.append(wav_utts_list[(nj-1)*size:])
   jobs = []
   for idx in range(nj):
     t_obj = Thread(target=write_wav,
-                   args=([splits[idx].tolist(), wav_dir, pad_length]))
+                   args=([splits[idx], wav_dir, pad_length]))
     jobs.append(t_obj)
     t_obj.start()
   for job in jobs:
