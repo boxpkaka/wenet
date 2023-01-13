@@ -95,6 +95,7 @@ export NCCL_P2P_DISABLE=1
    usage: prepare_data_from_local.py [-h] [--need_rename NEED_RENAME]
                                      [--business_name BUSINESS_NAME]
                                      [--dev_splits DEV_SPLITS] [--nj NJ]
+                                     [--is_cantonese] [--is_english]
                                      data_dir wav_in_dir wav_out_dir sample_rate
                                      sample_width wav_channels textgrid_dir
                                      paser_conf_path textgrid_channel
@@ -121,6 +122,8 @@ export NCCL_P2P_DISABLE=1
       --dev_splits DEV_SPLITS
                             验证集划分比例, 默认0.05.
       --nj NJ               线程数, 默认16.
+      --is_cantonese        是否是粤语, 默认否.
+      --is_english          是否是英语, 默认否.
    ```
 
 2. 模型调优
