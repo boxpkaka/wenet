@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 # Created by yuanding on 2022/07/20
 """wenet训练数据准备"""
-import collections
 import logging
 import random
 from argparse import ArgumentParser
@@ -13,23 +12,9 @@ from base_utils.dataset import CorpusConf, DbConf, db_name_parser
 from base_utils.utils import LOGGER_FORMAT
 
 from .prepare_data_for_raw import gen_data_by_wav_utts
+from .utils import combine_wav_utts
 
 _LOGGER = logging.getLogger(__file__)
-
-
-def combine_wav_utts(wav_utt_list):
-  """组合wav和utt.
-
-  Args:
-      wav_utt_list: 一条wav和一个utt组成的列表.
-
-  Returns:
-      一条wav和多个utt组成的列表.
-  """
-  wav_to_utts = collections.defaultdict(list)
-  for wav, utt in wav_utt_list:
-    wav_to_utts[wav].append(utt)
-  return list(wav_to_utts.items())
 
 
 def __cmd():
@@ -42,6 +27,8 @@ def __cmd():
                       help="验证集划分比例, 默认0.05.")
   parser.add_argument("--bizs", nargs="+", help="选取特定的业务, 支持多个.")
   parser.add_argument("--nj", type=int, default=32, help="线程数, 默认32.")
+  parser.add_argument("--is_english", default=False, action="store_true",
+                      help="是否是英语, 默认否.")
   args = parser.parse_args()
 
   corpus_conf = CorpusConf(DbConf(args.db_name))
@@ -55,9 +42,11 @@ def __cmd():
   random.shuffle(wav_to_utt)
   dev_nums = min(int(len(wav_to_utt) * args.dev_splits), 5000)
   gen_data_by_wav_utts(combine_wav_utts(wav_to_utt[:-dev_nums]),
-                       args.wavs_dir / "train", Path("data/train"), nj=args.nj)
+                       args.wavs_dir / "train", Path("data/train"), nj=args.nj,
+                       is_english=args.is_english)
   gen_data_by_wav_utts(combine_wav_utts(wav_to_utt[-dev_nums:]),
-                       args.wavs_dir / "dev", Path("data/dev"), nj=args.nj)
+                       args.wavs_dir / "dev", Path("data/dev"), nj=args.nj,
+                       is_english=args.is_english)
 
 
 if __name__ == '__main__':

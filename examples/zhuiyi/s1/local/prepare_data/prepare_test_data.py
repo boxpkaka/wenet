@@ -23,6 +23,8 @@ def __cmd():
                       help="wav音频生成目录, 默认data/wavs, 当路径存在时不会覆盖.")
   parser.add_argument("--pad_length", type=int, default=120,
                       help="生成音频时尾部padding静音时长, 默认120.")
+  parser.add_argument("--is_english", default=False, action="store_true",
+                      help="是否是英语, 默认否.")
   parser.add_argument("--nj", type=int, default=32, help="线程数, 默认32.")
   args = parser.parse_args()
 
@@ -31,7 +33,8 @@ def __cmd():
   wav_utts_list = corpus.get_wav_utts_list(args.subsets, filter_mty=True)
   gen_data_by_wav_utts(wav_utts_list, args.wavs_dir / args.subsets[0],
                        Path("data") / args.subsets[0],
-                       pad_length=args.pad_length, nj=args.nj)
+                       pad_length=args.pad_length, nj=args.nj,
+                       is_english=args.is_english)
 
 
 if __name__ == '__main__':
