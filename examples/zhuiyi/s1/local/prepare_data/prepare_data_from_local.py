@@ -148,6 +148,7 @@ def gen_local_db(wav_conf, textgrid_conf, biz_name, need_rename=False, nj=16,
   return localdb
 
 
+# pylint: disable=too-many-arguments
 def gen_wenet_data(data_dir: Path, wav_conf, textgrid_conf, biz_name,
                    need_rename, dev_splits, nj=16, is_english=False,
                    is_cantonese=False):
@@ -195,10 +196,10 @@ def __cmd():
   parser.add_argument("--dev_splits", type=float, default=0.05,
                       help="验证集划分比例, 默认0.05.")
   parser.add_argument("--nj", type=int, default=16, help="线程数, 默认16.")
-  parser.add_argument("--is_english", default=False, action="store_true",
-                      help="是否是英语, 默认否.")
   parser.add_argument("--is_cantonese", default=False, action="store_true",
                       help="是否是粤语, 默认否.")
+  parser.add_argument("--is_english", default=False, action="store_true",
+                      help="是否是英语, 默认否.")
   args = parser.parse_args()
   gen_wenet_data(args.data_dir, WavConf(args), TextGrigConf(args),
                  biz_name=args.business_name, need_rename=args.need_rename,

@@ -9,7 +9,6 @@ from pathlib import Path
 import re
 from threading import Thread
 
-import numpy as np
 from base_utils import dataset
 from base_utils.audio import WavInfo
 from base_utils.dataset import CorpusConf, DbConf, db_name_parser
