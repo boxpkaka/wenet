@@ -3,6 +3,7 @@
 # Created by yuanding on 2022/07/19
 """wenet数据准备"""
 import logging
+import math
 import wave
 from argparse import ArgumentParser
 from pathlib import Path
@@ -46,9 +47,8 @@ def write_wav_multithread(wav_utts_list, wav_dir: Path, pad_length, nj):
   """
   nj = min(len(wav_utts_list), nj)
 
-  size = len(wav_utts_list) // nj # TODO(fangcheng):
-  splits = [wav_utts_list[i*size:(i+1)*size] for i in range(nj-1)]
-  splits.append(wav_utts_list[(nj-1)*size:])
+  size = math.ceil(len(wav_utts_list) / nj)
+  splits = [wav_utts_list[i * size:(i + 1) * size] for i in range(nj)]
   jobs = []
   for idx in range(nj):
     t_obj = Thread(target=write_wav, args=([splits[idx], wav_dir, pad_length]))

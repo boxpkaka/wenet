@@ -26,7 +26,6 @@ def __cmd():
   parser.add_argument("--is_english", default=False, action="store_true",
                       help="是否是英语, 默认否.")
   parser.add_argument("--nj", type=int, default=32, help="线程数, 默认32.")
-  # TODO(fangcheng):
   args = parser.parse_args()
 
   corpus_conf = CorpusConf(DbConf(args.db_name))
