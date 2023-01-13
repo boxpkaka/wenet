@@ -45,16 +45,14 @@ def write_wav_multithread(wav_utts_list, wav_dir: Path, pad_length, nj):
       wav_dir: 生成音频的路径.
       nj: 任务数.
   """
-  if nj > len(wav_utts_list):
-    raise ValueError(f"wav_utts列表长度{len(wav_utts_list)}需要大于任务数{nj}.")
+  nj = min(len(wav_utts_list), nj)
 
   size = len(wav_utts_list) // nj
   splits = [wav_utts_list[i*size:(i+1)*size] for i in range(nj-1)]
   splits.append(wav_utts_list[(nj-1)*size:])
   jobs = []
   for idx in range(nj):
-    t_obj = Thread(target=write_wav,
-                   args=([splits[idx], wav_dir, pad_length]))
+    t_obj = Thread(target=write_wav, args=([splits[idx], wav_dir, pad_length]))
     jobs.append(t_obj)
     t_obj.start()
   for job in jobs:
@@ -76,12 +74,13 @@ def format_text(text, remove_en_space=True):
   return re.sub(pattern_space, '', text)
 
 
-def write_data(wav_utts_list, data_dir):
+def write_data(wav_utts_list, data_dir, is_english=False):
   """生成data数据.
 
   Args:
       data_dir: 数据文件夹路径.
-      wav_utts_list: wav和对应的utts列表
+      wav_utts_list: wav和对应的utts列表.
+      is_english: 是否是英文, 默认False.
   """
   with (data_dir / "wav.scp").open("w", encoding="utf-8") as wav_scp_file, \
       (data_dir / "text").open("w", encoding="utf-8") as text_file, \
@@ -89,7 +88,8 @@ def write_data(wav_utts_list, data_dir):
     for wav, utts in wav_utts_list:
       for utt in utts:
         wav_scp_file.write(f"{utt.utt_id()} {wav.absolute()}\n")
-        text_file.write(f"{utt.utt_id()} {format_text(utt.text)}\n")
+        text_file.write(f"{utt.utt_id()} " \
+                        f"{format_text(utt.text, not is_english)}\n")
         text_fmt_file.write(f"{utt.utt_id()} {format_text(utt.text, False)}\n")
 
 
@@ -111,7 +111,7 @@ def update_wav_utts(wav_utts_list, wav_dir: Path):
 
 
 def gen_data_by_wav_utts(wav_utts, wav_dir: Path, data_dir: Path, pad_length=0,
-                         nj=32):
+                         nj=32, is_english=False):
   """根据传入的wav_utts生成data数据.
 
   Args:
@@ -119,6 +119,7 @@ def gen_data_by_wav_utts(wav_utts, wav_dir: Path, data_dir: Path, pad_length=0,
     wav_dir: 音频文件夹.
     data_dir: 数据文件夹.
     nj: 任务数.
+    is_english: 是否是英文, 默认False.
   """
   if wav_dir.exists():
     _LOGGER.info(f"{wav_dir} 已经存在, 如果需要重新生成请手动删除.")
@@ -133,7 +134,7 @@ def gen_data_by_wav_utts(wav_utts, wav_dir: Path, data_dir: Path, pad_length=0,
     _LOGGER.info(f"{data_dir}下wav.scp和text已经存在, 如果需要重新生成请手动删除.")
   else:
     updated_wav_utts = update_wav_utts(wav_utts, wav_dir)
-    write_data(updated_wav_utts, data_dir)
+    write_data(updated_wav_utts, data_dir, is_english=is_english)
 
 
 def gen_data_by_subsets(corpus_conf: dataset.CorpusConf, subsets, wav_dir: Path,

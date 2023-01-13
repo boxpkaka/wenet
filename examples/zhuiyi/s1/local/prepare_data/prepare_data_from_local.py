@@ -17,12 +17,13 @@ from base_utils.utils import LOGGER_FORMAT
 
 from .prepare_data_for_raw import gen_data_by_wav_utts
 from .utils import (TextGrigConf, WavConf, get_parser, get_textgrid_parser,
-                    get_wav_parser)
+                    get_wav_parser, combine_wav_utts)
 
 _LOGGER = logging.getLogger(__file__)
 
 
-def process_text_with_wav(localdb, textgrid_conf, wav_out_dir, out_map_path):
+def process_text_with_wav(localdb, textgrid_conf, wav_out_dir, out_map_path,
+                          is_english=False, is_cantonese=False):
   """textgrid文本规范检查及文本音频一致性检查，oov集外词会输出oov报告.
      最终的数据信息会存储至本地模拟数据库(localdb)的data表.
 
@@ -31,6 +32,8 @@ def process_text_with_wav(localdb, textgrid_conf, wav_out_dir, out_map_path):
     textgrid_conf: textgrid标注文件相关的配置.
     wav_out_dir: 输出音频文件夹路径.
     out_map_path: 音频输出映射文件.
+    is_english: 是否是英文, 默认False.
+    is_cantonese: 是否是粤语, 默认False.
 
   Returns:
     oov_obj: OovReport对象.
@@ -46,7 +49,7 @@ def process_text_with_wav(localdb, textgrid_conf, wav_out_dir, out_map_path):
 
   all_data_list, oov_obj = textgrid_parser.get_data_list_with_oov_check(
       tg_data_list, wav_id_list, textgrid_conf.tg_channel, wav_num_chan_list,
-      False, False)
+      is_cantonese=is_cantonese, is_english=is_english)
   if oov_obj.has_oov():
     oov_file = Path(f"{textgrid_conf.tg_dir.name}.oov")
     _LOGGER.error(f"标注数据存在OOV, OOV信息: {textgrid_conf.tg_dir.name}.oov.")
@@ -93,7 +96,8 @@ def process_wav(localdb, wav_conf, biz_name, out_map_path, need_rename, nj):
   local_wav_insert_many(wav_data_list, localdb)
 
 
-def gen_local_db(wav_conf, textgrid_conf, biz_name, need_rename=False, nj=16):
+def gen_local_db(wav_conf, textgrid_conf, biz_name, need_rename=False, nj=16,
+                 is_english=False, is_cantonese=False):
   """处理本地标注文件和音频文件，并生成本地数据库.
 
   Args:
@@ -102,6 +106,8 @@ def gen_local_db(wav_conf, textgrid_conf, biz_name, need_rename=False, nj=16):
     biz_name: 业务名.
     need_rename: 是否需要对音频文件重命名, 默认否.
     nj: 并发数量.
+    is_english: 是否是英文, 默认False.
+    is_cantonese: 是否是粤语, 默认False.
 
   Returns:
     localdb: LocalDB对象.
@@ -123,13 +129,16 @@ def gen_local_db(wav_conf, textgrid_conf, biz_name, need_rename=False, nj=16):
 
   # 文本规范检查及文本音频一致性检查，oov词会输出oov_report
   oov_obj = process_text_with_wav(localdb, textgrid_conf, wav_conf.wav_out_dir,
-                                  out_map_path)
+                                  out_map_path, is_english=is_english,
+                                  is_cantonese=is_cantonese)
   if oov_obj.has_oov():
     _LOGGER.info("OOV自动处理中, 默认覆盖原始标注文本")
     solve_with_oov(textgrid_conf.tg_dir,
                    Path(f"{textgrid_conf.tg_dir.name}.oov"))
     oov_obj = process_text_with_wav(localdb, textgrid_conf,
-                                    wav_conf.wav_out_dir, out_map_path)
+                                    wav_conf.wav_out_dir, out_map_path,
+                                    is_english=is_english,
+                                    is_cantonese=is_cantonese)
     if oov_obj.has_oov():
       _LOGGER.error(f"OOV处理失败, 请手动处理OOV, OOV信息: "
                     f"{textgrid_conf.tg_dir.name}.oov.")
@@ -140,7 +149,8 @@ def gen_local_db(wav_conf, textgrid_conf, biz_name, need_rename=False, nj=16):
 
 
 def gen_wenet_data(data_dir: Path, wav_conf, textgrid_conf, biz_name,
-                   need_rename, dev_splits, nj=16):
+                   need_rename, dev_splits, nj=16, is_english=False,
+                   is_cantonese=False):
   """生成wenet需要的数据.
 
   Args:
@@ -151,29 +161,30 @@ def gen_wenet_data(data_dir: Path, wav_conf, textgrid_conf, biz_name,
       need_rename: 是否需要重命名, 默认否.
       dev_splits: 验证集划分比例.
       nj: 并发数, 默认16.
+      is_english: 是否是英文, 默认False.
+      is_cantonese: 是否是粤语, 默认False.
   """
+  localdb = gen_local_db(wav_conf, textgrid_conf, biz_name, need_rename,
+                         is_english=is_english, is_cantonese=is_cantonese)
 
-  localdb = gen_local_db(wav_conf, textgrid_conf, biz_name, need_rename)
-
-  corpus = dataset.LocalCorpus(localdb, textgrid_conf.tg_channel)
+  corpus = dataset.LocalCorpus(localdb, textgrid_conf.tg_channel,
+                               is_english=is_english, is_cantonese=is_cantonese)
 
   wav_utts_list = corpus.get_wav_utts_list(
       filter_mty=True, aim_channel=(textgrid_conf.tg_channel,))
 
-  kaldi_data = []
-  for wav, utterances in wav_utts_list:
-    for utt in utterances:
-      kaldi_data.append((wav, [utt]))
+  wav_to_utt = [(k, v) for k, vs in wav_utts_list for v in vs]
 
   random.seed(777)
-  random.shuffle(kaldi_data)
-  split = min(int(len(kaldi_data) * dev_splits), 1000)
-  train = kaldi_data[:-split]
-  dev = kaldi_data[-split:]
+  random.shuffle(wav_to_utt)
+  dev_nums = min(int(len(wav_to_utt) * dev_splits), 1000)
 
-  gen_data_by_wav_utts(train, data_dir / "wavs" / "train", data_dir / "train",
-                       nj=nj)
-  gen_data_by_wav_utts(dev, data_dir / "wavs" / "dev", data_dir / "dev", nj=nj)
+  gen_data_by_wav_utts(combine_wav_utts(wav_to_utt[:-dev_nums]),
+                       data_dir / "wavs" / "train", data_dir / "train", nj=nj,
+                       is_english=is_english)
+  gen_data_by_wav_utts(combine_wav_utts(wav_to_utt[-dev_nums:]),
+                       data_dir / "wavs" / "dev", data_dir / "dev", nj=nj,
+                       is_english=is_english)
 
 
 def __cmd():
@@ -184,11 +195,15 @@ def __cmd():
   parser.add_argument("--dev_splits", type=float, default=0.05,
                       help="验证集划分比例, 默认0.05.")
   parser.add_argument("--nj", type=int, default=16, help="线程数, 默认16.")
+  parser.add_argument("--is_english", default=False, action="store_true",
+                      help="是否是英语, 默认否.")
+  parser.add_argument("--is_cantonese", default=False, action="store_true",
+                      help="是否是粤语, 默认否.")
   args = parser.parse_args()
-
   gen_wenet_data(args.data_dir, WavConf(args), TextGrigConf(args),
                  biz_name=args.business_name, need_rename=args.need_rename,
-                 dev_splits=args.dev_splits, nj=args.nj)
+                 dev_splits=args.dev_splits, nj=args.nj,
+                 is_english=args.is_english, is_cantonese=args.is_cantonese)
 
 
 if __name__ == '__main__':

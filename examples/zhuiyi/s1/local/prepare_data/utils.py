@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # Created by yuanding on 2022/08/02
 """_"""
+import collections
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -106,3 +107,18 @@ def get_parser():
                       help="数据对应的业务名, 用于音频重命名, 默认'selflearning'",
                       default="selflearning")
   return parser
+
+
+def combine_wav_utts(wav_utt_list):
+  """组合wav和utt.
+
+  Args:
+      wav_utt_list: 一条wav和一个utt组成的列表.
+
+  Returns:
+      一条wav和多个utt组成的列表.
+  """
+  wav_to_utts = collections.defaultdict(list)
+  for wav, utt in wav_utt_list:
+    wav_to_utts[wav].append(utt)
+  return list(wav_to_utts.items())
