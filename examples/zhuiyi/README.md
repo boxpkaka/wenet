@@ -179,14 +179,15 @@ export NCCL_P2P_DISABLE=1
    positional arguments:
    ori_text        待处理文本.
    format_text     处理后的文本.
-   dict_path       分词使用的词典路径, 发音词典或者asr模型文件夹下的 lang_char.txt
+   dict_path       分词使用的词典路径, 发音词典或者asr模型文件夹下的lexicon.txt.
 
    optional arguments:
    -h, --help      show this help message and exit
+   --nj NJ         线程数, 默认16.
    --is_english    是否是英语, 默认否.
    --is_cantonese  是否是粤语, 默认否.
    ```
-   - dict_path: `<model_dir>/lang_char.txt`
+   - dict_path: `<model_dir>/self_learning/data/local/dict/lexicon.txt`
 
 2. 构造解码图
 
