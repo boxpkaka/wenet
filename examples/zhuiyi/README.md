@@ -145,6 +145,11 @@ export NCCL_P2P_DISABLE=1
    ```
 
    - data_dir为第一步数据准备中生成的训练数据文件夹.
+   - cpu训练: 可通过添加jemalloc优化内存增长问题.
+     jemalloc添加方式: 在需要执行的脚本前添加jemalloc动态库，以声学调优为例:
+     ```bash
+     env LD_PRELOAD=/usr/local/lib/libjemalloc.so.2 ./local/self_learning/run.sh
+     ```
 
 3. 模型导出
   1. cpu推理模型包导出:
