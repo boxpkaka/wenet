@@ -13,7 +13,8 @@ else
 fi
 # You can also manually specify CUDA_VISIBLE_DEVICES
 # if you don't want to utilize all available GPU resources.
-export CUDA_VISIBLE_DEVICES="${gpu_list}"
+# export CUDA_VISIBLE_DEVICES="${gpu_list}"
+export CUDA_VISIBLE_DEVICES="1,2,3"
 echo "CUDA_VISIBLE_DEVICES is ${CUDA_VISIBLE_DEVICES}"
 
 stage=0
@@ -39,7 +40,7 @@ train_set=train
 #        train_config=conf/finetune_whisper_largev3_conv2d4.yaml
 #        checkpoint=exp/whisper/large-v3/wenet_whisper.remove-subsample.pt
 train_config=conf/finetune_whisper_largev3_conv2d4.yaml
-checkpoint=exp/whisper/large-v3/wenet_whisper.remove-subsample.pt
+checkpoint=/data1/yumingdong/model/wenet_whisper/whisper-large-v3/whisper-large-v3-remove_subsample.pt
 dir=exp/finetune_whisper_largev3_conv2d4
 tensorboard_dir=tensorboard
 num_workers=8
@@ -100,8 +101,8 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
       --train_engine ${train_engine} \
       --config $train_config \
       --data_type  $data_type \
-      --train_data data/$train_set/data.list \
-      --cv_data data/dev/data.list \
+      --train_data /data2/yumingdong/data/cantonese_50h_3/data.list \
+      --cv_data /data2/yumingdong/data/test_1000Cantonese/data.list \
       ${checkpoint:+--checkpoint $checkpoint} \
       --model_dir $dir \
       --tensorboard_dir ${tensorboard_dir} \
@@ -148,7 +149,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     --modes $decode_modes \
     --config $dir/train.yaml \
     --data_type $data_type \
-    --test_data data/test/data.list \
+    --test_data /data2/yumingdong/data/test_1000Cantonese/data.list \
     --checkpoint $decode_checkpoint \
     --beam_size 10 \
     --batch_size 16 \

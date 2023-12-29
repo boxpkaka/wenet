@@ -73,7 +73,7 @@ class Whisper(ASRModel):
                                                    self.ignore_id,
                                                    task="transcribe",
                                                    no_timestamp=True,
-                                                   language="zh",
+                                                   language="yue",
                                                    use_prev=False)
         cur_len = ys_in_pad.size(1)
         ys_in_lens = ys_pad_lens + cur_len - prev_len
