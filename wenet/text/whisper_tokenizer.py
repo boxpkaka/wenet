@@ -65,6 +65,9 @@ class WhisperTokenizer(BaseTokenizer):
 
     def tokenize(self, line: str) -> Tuple[List[str], List[int]]:
         self._build_tiktoken()
+        '''
+        不允许encode {special token}, 需要传入allowed_special={'<|zh|>', ...}
+        '''
         ids = self.tokenizer.encoding.encode(line)
         text = [self.i2t[d] for d in ids]
         return text, ids

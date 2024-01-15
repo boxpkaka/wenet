@@ -14,11 +14,11 @@ fi
 # You can also manually specify CUDA_VISIBLE_DEVICES
 # if you don't want to utilize all available GPU resources.
 # export CUDA_VISIBLE_DEVICES="${gpu_list}"
-export CUDA_VISIBLE_DEVICES="1,2,3"
+export CUDA_VISIBLE_DEVICES="2,3,4,5,6,7"
 echo "CUDA_VISIBLE_DEVICES is ${CUDA_VISIBLE_DEVICES}"
 
 stage=0
-stop_stage=2
+stop_stage=0
 
 # You should change the following two parameters for multiple machine training,
 # see https://pytorch.org/docs/stable/elastic/run.html
@@ -101,8 +101,8 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
       --train_engine ${train_engine} \
       --config $train_config \
       --data_type  $data_type \
-      --train_data /data2/yumingdong/data/cantonese_50h_3/data.list \
-      --cv_data /data2/yumingdong/data/test_1000Cantonese/data.list \
+      --train_data /data2/yumingdong/data/raw/wenet_data_list/mandarin_100h+cantonese_100h/data.list \
+      --cv_data /data2/yumingdong/data/raw/wenet/test_1000Cantonese/data.list \
       ${checkpoint:+--checkpoint $checkpoint} \
       --model_dir $dir \
       --tensorboard_dir ${tensorboard_dir} \
