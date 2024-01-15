@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import librosa
 import logging
 import json
@@ -145,13 +146,25 @@ def parse_raw(data):
                     frame_offset=start_frame)
             else:
                 waveform, sample_rate = torchaudio.load(wav_file)
-            example = dict(key=key,
-                           txt=txt,
-                           wav=waveform,
-                           sample_rate=sample_rate)
+            example = copy.deepcopy(obj)  # copy and keep all the fields
+            example['wav'] = waveform  # overwrite wav
+            example['sample_rate'] = sample_rate
             yield example
         except Exception as ex:
             logging.warning('Failed to read {}'.format(wav_file))
+
+
+def parse_speaker(data, speaker_table_path):
+    speaker_dict = {}
+    with open(speaker_table_path, 'r', encoding='utf8') as fin:
+        for line in fin:
+            arr = line.strip().split()
+            speaker_dict[arr[0]] = int(arr[1])
+    for sample in data:
+        assert 'speaker' in sample
+        speaker = sample['speaker']
+        sample['speaker'] = speaker_dict.get(speaker, 0)
+        yield sample
 
 
 def filter(data,
@@ -283,7 +296,8 @@ def compute_fbank(data,
                           dither=dither,
                           energy_floor=0.0,
                           sample_frequency=sample_rate)
-        yield dict(key=sample['key'], label=sample['label'], feat=mat)
+        sample['feat'] = mat
+        yield sample
 
 
 def compute_mfcc(data,
@@ -320,7 +334,8 @@ def compute_mfcc(data,
                          high_freq=high_freq,
                          low_freq=low_freq,
                          sample_frequency=sample_rate)
-        yield dict(key=sample['key'], label=sample['label'], feat=mat)
+        sample['feat'] = mat
+        yield sample
 
 
 def compute_log_mel_spectrogram(data,
@@ -365,9 +380,8 @@ def compute_log_mel_spectrogram(data,
         log_spec = torch.clamp(mel_spec, min=1e-10).log10()
         log_spec = torch.maximum(log_spec, log_spec.max() - 8.0)
         log_spec = (log_spec + 4.0) / 4.0
-        yield dict(key=sample['key'],
-                   label=sample['label'],
-                   feat=log_spec.transpose(0, 1))
+        sample['feat'] = log_spec.transpose(0, 1)
+        yield sample
 
 
 def tokenize(data, tokenizer: BaseTokenizer):
@@ -612,8 +626,11 @@ def padding(data):
         sorted_labels = [
             torch.tensor(sample[i]['label'], dtype=torch.int64) for i in order
         ]
+        sorted_wavs = [sample[i]['wav'].squeeze(0) for i in order]
         label_lengths = torch.tensor([x.size(0) for x in sorted_labels],
                                      dtype=torch.int32)
+        wav_lengths = torch.tensor([x.size(0) for x in sorted_wavs],
+                                   dtype=torch.int32)
 
         padded_feats = pad_sequence(sorted_feats,
                                     batch_first=True,
@@ -621,11 +638,20 @@ def padding(data):
         padding_labels = pad_sequence(sorted_labels,
                                       batch_first=True,
                                       padding_value=-1)
-
-        yield {
+        padded_wavs = pad_sequence(sorted_wavs,
+                                   batch_first=True,
+                                   padding_value=0)
+        batch = {
             "keys": sorted_keys,
             "feats": padded_feats,
             "target": padding_labels,
             "feats_lengths": feats_lengths,
-            "target_lengths": label_lengths
+            "target_lengths": label_lengths,
+            "pcm": padded_wavs,
+            "pcm_length": wav_lengths,
         }
+        if 'speaker' in sample[0]:
+            speaker = torch.tensor([sample[i]['speaker'] for i in order],
+                                   dtype=torch.int32)
+            batch['speaker'] = speaker
+        yield batch

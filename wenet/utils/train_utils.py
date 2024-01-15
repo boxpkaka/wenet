@@ -201,13 +201,16 @@ def check_modify_and_save_config(args, configs, symbol_table):
         assert ds_configs["gradient_clipping"] == configs['grad_clip']
         assert ds_configs["steps_per_print"] == configs['log_interval']
 
-    if 'fbank_conf' in configs['dataset_conf']:
-        input_dim = configs['dataset_conf']['fbank_conf']['num_mel_bins']
-    elif 'log_mel_spectrogram_conf' in configs['dataset_conf']:
-        input_dim = configs['dataset_conf']['log_mel_spectrogram_conf'][
-            'num_mel_bins']
+    if 'input_dim' not in configs:
+        if 'fbank_conf' in configs['dataset_conf']:
+            input_dim = configs['dataset_conf']['fbank_conf']['num_mel_bins']
+        elif 'log_mel_spectrogram_conf' in configs['dataset_conf']:
+            input_dim = configs['dataset_conf']['log_mel_spectrogram_conf'][
+                'num_mel_bins']
+        else:
+            input_dim = configs['dataset_conf']['mfcc_conf']['num_mel_bins']
     else:
-        input_dim = configs['dataset_conf']['mfcc_conf']['num_mel_bins']
+        input_dim = configs['input_dim']
 
     configs, _ = get_blank_id(configs, symbol_table)
 
@@ -271,7 +274,10 @@ def init_dataset_and_dataloader(args, configs, tokenizer):
 def wrap_cuda_model(args, model):
     local_world_size = int(os.environ.get('LOCAL_WORLD_SIZE', 1))
     world_size = int(os.environ.get('WORLD_SIZE', 1))
-    grad_ckpt = getattr(model.encoder, 'gradient_checkpointing', False)
+    if hasattr(model, 'encoder'):
+        grad_ckpt = getattr(model.encoder, 'gradient_checkpointing', False)
+    else:
+        grad_ckpt = False
     # TODO(xcsong): could one GPU use ddp? and int(os.environ.get('WORLD_SIZE', 1)) > 1
     if args.train_engine == "torch_ddp":  # native pytorch ddp
         assert (torch.cuda.is_available())
@@ -425,7 +431,8 @@ def wenet_join(group_join, info_dict):
         #   operations are executed. If we add a communication operation that is not
         #   managed by Deepspeed in this group, it's highly likely to cause
         #   communication chaos, resulting in hard-to-troubleshoot hangs.
-        dist.monitored_barrier(group=group_join)
+        dist.monitored_barrier(group=group_join,
+                               timeout=group_join.options._timeout)
     except RuntimeError as e:
         logging.info("Detected uneven workload distribution: {}\n".format(e) +
                      "Break current worker to manually join all workers, " +
@@ -488,7 +495,8 @@ def batch_backward(model, scaler, info_dict):
             scaled_loss.backward()
     info_dict['loss_dict']['loss'] = scaled_loss
     for loss_name, loss_value in info_dict['loss_dict'].items():
-        info_dict['loss_dict'][loss_name] = loss_value.item()
+        if loss_value is not None:
+            info_dict['loss_dict'][loss_name] = loss_value.item()
 
     return info_dict
 
@@ -538,6 +546,7 @@ def update_parameter_and_lr(model, optimizer, scheduler, scaler, info_dict):
                 optimizer.step()
         optimizer.zero_grad()
         scheduler.step()
+        grad_norm = grad_norm.item()
 
     info_dict["lr"] = optimizer.param_groups[0]['lr']
     info_dict["grad_norm"] = grad_norm
