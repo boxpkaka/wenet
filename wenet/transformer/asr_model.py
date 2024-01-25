@@ -38,6 +38,8 @@ from wenet.utils.common import (IGNORE_ID, add_sos_eos, log_add,
 from wenet.utils.mask import (make_pad_mask, mask_finished_preds,
                               mask_finished_scores, subsequent_mask)
 
+from multi_quantization.prediction import JointCodebookLoss
+
 
 class ASRModel(torch.nn.Module):
     """CTC-attention hybrid Encoder-Decoder model"""
@@ -52,6 +54,8 @@ class ASRModel(torch.nn.Module):
         reverse_weight: float = 0.0,
         lsm_weight: float = 0.0,
         length_normalized_loss: bool = False,
+        num_codebooks: int = 0,
+        codebook_weigth: float = 0.5
     ):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
 
@@ -73,6 +77,13 @@ class ASRModel(torch.nn.Module):
             smoothing=lsm_weight,
             normalize_length=length_normalized_loss,
         )
+        if num_codebooks > 0:
+            self.codebook_loss_net = JointCodebookLoss(
+                predictor_channels=self.encoder.output_size,
+                num_codebooks=num_codebooks,
+                is_joint=False,
+            )
+            self.codebook_weight = codebook_weigth
 
     def forward(
         self,
@@ -80,6 +91,7 @@ class ASRModel(torch.nn.Module):
         speech_lengths: torch.Tensor,
         text: torch.Tensor,
         text_lengths: torch.Tensor,
+        codebook_indexes=None
     ) -> Dict[str, Optional[torch.Tensor]]:
         """Frontend + Encoder + Decoder + Calc loss
 
@@ -112,14 +124,29 @@ class ASRModel(torch.nn.Module):
         else:
             loss_ctc = None
 
+        # 2c. Distillation branch
+        if codebook_indexes is not None:
+            assert hasattr(self, "codebook_loss_net")
+            if codebook_indexes.shape[1] != encoder_out.shape[1]:
+                codebook_indexes = self.concat_successive_codebook_indexes(
+                    encoder_out, codebook_indexes
+                )
+            loss_codebook = self.codebook_loss_net(
+                encoder_out, codebook_indexes
+            )
+        else:
+            loss_codebook = None
+        
         if loss_ctc is None:
             loss = loss_att
         elif loss_att is None:
             loss = loss_ctc
+        elif loss_codebook is None:
+            loss = self.ctc_weight * loss_ctc + (1 -self.ctc_weight) * loss_att
         else:
-            loss = self.ctc_weight * loss_ctc + (1 -
-                                                 self.ctc_weight) * loss_att
-        return {"loss": loss, "loss_att": loss_att, "loss_ctc": loss_ctc}
+            loss = (self.ctc_weight * loss_ctc + (1 -self.ctc_weight) * loss_att) * (1 - self.codebook_weight) + self.codebook_weight * loss_codebook
+            
+        return {"loss": loss, "loss_att": loss_att, "loss_ctc": loss_ctc, "loss_codebook": loss_codebook}
 
     def _calc_att_loss(
         self,
@@ -902,3 +929,29 @@ class ASRModel(torch.nn.Module):
         # r_dccoder_out will be 0.0, if reverse_weight is 0.0
         r_decoder_out = torch.nn.functional.log_softmax(r_decoder_out, dim=-1)
         return decoder_out, r_decoder_out
+
+    @staticmethod
+    def concat_successive_codebook_indexes(middle_layer_output, codebook_indexes):
+        # Output rate of hubert is 50 frames per second,
+        # while that of current encoder is 25.
+        # Following code handling two issues:
+        # 1.
+        #   Roughly speaking, to generate another frame output,
+        #   hubert needes extra two frames,
+        #   while current encoder needs extra four frames.
+        #   Suppose there are only extra three frames provided,
+        #   hubert will generate another frame while current encoder does nothing.
+        # 2.
+        #   codebook loss is a frame-wise loss, to enalbe 25 frames studnet output
+        #   learns from 50 frames teacher output, two successive frames of teacher model
+        #   output is concatenated together.
+        t_expected = middle_layer_output.shape[1]
+        N, T, C = codebook_indexes.shape
+
+        # Handling issue 1.
+        if T >= t_expected * 2:
+            codebook_indexes = codebook_indexes[:, : t_expected * 2, :]
+        # Handling issue 2.
+        codebook_indexes = codebook_indexes.reshape(N, t_expected, C * 2)
+        assert middle_layer_output.shape[1] == codebook_indexes.shape[1]
+        return codebook_indexes
