@@ -14,6 +14,7 @@
 # Modified from ESPnet(https://github.com/espnet/espnet)
 
 from collections import defaultdict
+from tabnanny import check
 from typing import Dict, List, Optional, Tuple
 
 import torch
@@ -55,6 +56,7 @@ class ASRModel(torch.nn.Module):
         lsm_weight: float = 0.0,
         length_normalized_loss: bool = False,
         num_codebooks: int = 0,
+        codebook_dim: int = 384,
         codebook_weigth: float = 0.5
     ):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
@@ -79,9 +81,10 @@ class ASRModel(torch.nn.Module):
         )
         if num_codebooks > 0:
             self.codebook_loss_net = JointCodebookLoss(
-                predictor_channels=self.encoder.output_size,
+                predictor_channels=codebook_dim,
                 num_codebooks=num_codebooks,
                 is_joint=False,
+                checkpoint=False
             )
             self.codebook_weight = codebook_weigth
 
@@ -91,7 +94,7 @@ class ASRModel(torch.nn.Module):
         speech_lengths: torch.Tensor,
         text: torch.Tensor,
         text_lengths: torch.Tensor,
-        codebook_indexes=None
+        codebook_indexes: Optional[torch.Tensor]
     ) -> Dict[str, Optional[torch.Tensor]]:
         """Frontend + Encoder + Decoder + Calc loss
 
@@ -125,15 +128,18 @@ class ASRModel(torch.nn.Module):
             loss_ctc = None
 
         # 2c. Distillation branch
-        if codebook_indexes is not None:
-            assert hasattr(self, "codebook_loss_net")
-            if codebook_indexes.shape[1] != encoder_out.shape[1]:
-                codebook_indexes = self.concat_successive_codebook_indexes(
+
+        if hasattr(self, "codebook_loss_net"):
+            if codebook_indexes is not None:
+                if codebook_indexes.shape[1] != encoder_out.shape[1]:
+                    codebook_indexes = self.concat_successive_codebook_indexes(
+                        encoder_out, codebook_indexes
+                    )
+                loss_codebook = self.codebook_loss_net(
                     encoder_out, codebook_indexes
                 )
-            loss_codebook = self.codebook_loss_net(
-                encoder_out, codebook_indexes
-            )
+            else:
+                loss_codebook = None
         else:
             loss_codebook = None
         
