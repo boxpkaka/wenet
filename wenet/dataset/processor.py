@@ -19,6 +19,9 @@ import re
 import tarfile
 from subprocess import PIPE, Popen
 from urllib.parse import urlparse
+import h5py
+import numpy as np
+
 
 import torch
 import torchaudio
@@ -640,3 +643,23 @@ def padding(data):
 
         yield (sorted_keys, padded_feats, padding_labels, feats_lengths,
                label_lengths)
+        
+
+def add_codebook(data, codebook_file):
+    """ 添加codebook数据到每个样本
+        Args:
+            sample_iter: Iterable[{key, feat, label}]
+            codebook_file: h5文件路径
+
+        Returns:
+            Iterable[{key, feat, label, codebook}]
+    """
+
+    with h5py.File(codebook_file, 'r') as f:
+        codebooks = {key: torch.from_numpy(f[key]) for key in f.keys()}
+
+    for sample in data:
+        assert 'keys' in sample
+        key = sample['keys']
+        sample['codebook'] = codebooks.get(key, None)
+        yield sample
