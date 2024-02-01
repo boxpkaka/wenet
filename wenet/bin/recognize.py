@@ -216,7 +216,7 @@ def main():
     device = torch.device('cuda' if use_cuda else 'cpu')
     model = model.to(device)
     model.eval()
-
+    print(model)
     context_graph = None
     if 'decoding-graph' in args.context_bias_mode:
         context_graph = ContextGraph(args.context_list_path,

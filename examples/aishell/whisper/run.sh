@@ -1,5 +1,6 @@
 #!/bin/bash
-
+export NCCL_DEBUG=INFO
+# export NCCL_IB_GID_INDEX=3
 # Copyright 2019 Mobvoi Inc. All Rights Reserved.
 . ./path.sh || exit 1;
 
@@ -13,12 +14,11 @@ else
 fi
 # You can also manually specify CUDA_VISIBLE_DEVICES
 # if you don't want to utilize all available GPU resources.
-# export CUDA_VISIBLE_DEVICES="${gpu_list}"
-export CUDA_VISIBLE_DEVICES="2,3,4,5,6,7"
+export CUDA_VISIBLE_DEVICES="1,2,3,4,5"
 echo "CUDA_VISIBLE_DEVICES is ${CUDA_VISIBLE_DEVICES}"
 
 stage=0
-stop_stage=0
+stop_stage=1                    
 
 # You should change the following two parameters for multiple machine training,
 # see https://pytorch.org/docs/stable/elastic/run.html
@@ -39,9 +39,12 @@ train_set=train
 # 2. Whisper largev3 with randomly init conv2d4
 #        train_config=conf/finetune_whisper_largev3_conv2d4.yaml
 #        checkpoint=exp/whisper/large-v3/wenet_whisper.remove-subsample.pt
-train_config=conf/finetune_whisper_largev3_conv2d4.yaml
-checkpoint=/data1/yumingdong/model/wenet_whisper/whisper-large-v3/whisper-large-v3-remove_subsample.pt
-dir=exp/finetune_whisper_largev3_conv2d4
+train_config=/data1/yumingdong/offical/wenet/examples/aishell/whisper/conf/finetune_whisper_largev3_conv2d4.yaml
+checkpoint=/data1/yumingdong/model/wenet_whisper/whisper-large-v3/wenet_whisper_remove_conv.pt
+dir=exp/whisper-large-v3_multi_lang_yue_50h+zh_50h_ctc_0_conv2d4
+train_data=/data2/yumingdong/data/raw/wenet_data_list/yue_50h+zh_50h_2/data.list
+cv_data=/data2/yumingdong/data/raw/wenet_data_list/test_1000Cantonese/data.list
+
 tensorboard_dir=tensorboard
 num_workers=8
 prefetch=500
@@ -101,8 +104,8 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
       --train_engine ${train_engine} \
       --config $train_config \
       --data_type  $data_type \
-      --train_data /data2/yumingdong/data/raw/wenet_data_list/mandarin_100h+cantonese_100h/data.list \
-      --cv_data /data2/yumingdong/data/raw/wenet/test_1000Cantonese/data.list \
+      --train_data $train_data \
+      --cv_data $cv_data \
       ${checkpoint:+--checkpoint $checkpoint} \
       --model_dir $dir \
       --tensorboard_dir ${tensorboard_dir} \
@@ -143,13 +146,13 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   # non-streaming model. The default value is -1, which is full chunk
   # for non-streaming inference.
   decoding_chunk_size=
-  ctc_weight=0.3
+  ctc_weight=0.0
   reverse_weight=0.5
   python wenet/bin/recognize.py --gpu 0 \
     --modes $decode_modes \
     --config $dir/train.yaml \
     --data_type $data_type \
-    --test_data /data2/yumingdong/data/test_1000Cantonese/data.list \
+    --test_data data/test/data.list \
     --checkpoint $decode_checkpoint \
     --beam_size 10 \
     --batch_size 16 \

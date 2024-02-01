@@ -264,7 +264,7 @@ class ASRModel(torch.nn.Module):
                 https://arxiv.org/pdf/2102.01547.pdf
                    * ctc_greedy_search
                    * ctc_prefix_beam_search
-                   * atttention
+                   * attention
                    * attention_rescoring
             speech (torch.Tensor): (batch, max_len, feat_dim)
             speech_length (torch.Tensor): (batch, )

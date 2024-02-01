@@ -15,6 +15,7 @@
 """Unility functions for Transformer."""
 
 import math
+from tokenize import Special
 from typing import List, Tuple
 
 import torch
@@ -229,6 +230,89 @@ def add_whisper_tokens(special_tokens, ys_pad: torch.Tensor, ignore_id: int,
     return pad_list(ys_in, special_tokens["eot"]), pad_list(ys_out, ignore_id)
 
 
+def add_whisper_tokens_multi_language(
+        special_tokens, ys_pad: torch.Tensor, ignore_id: int,
+        task: str, no_timestamp: bool, language: list,
+        use_prev: bool) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Add whisper-style tokens.
+
+    ([PREV] -> [previous text tokens or hotwords]).optional --
+      ┌------------------------------------------------------↲
+      ↓
+    [sot] -> [language id] -> [transcribe] -> [begin time] -> [text tokens] -> [end time] -> ... -> [eot]    # noqa
+        |          |                |-------> [no timestamps] -> [text tokens] ----------------------↑       # noqa
+        |          |                                                                                 |       # noqa
+        |          |--------> [translate]  -> [begin time] -> [text tokens] -> [end time] -> ... --->|       # noqa
+        |                           |-------> [no timestamps] -> [text tokens] --------------------->|       # noqa
+        |                                                                                            |       # noqa
+        |--> [no speech(VAD)] ---------------------------------------------------------------------->|       # noqa
+
+    Args:
+        special_tokens: get IDs of special tokens
+        ignore_id (int): index of padding
+        no_timestamp (bool): whether to add timestamps tokens
+        language (str): language tag
+
+    Returns:
+        ys_in (torch.Tensor) : (B, Lmax + ?)
+        ys_out (torch.Tensor) : (B, Lmax + ?)
+
+    """
+    if use_prev:
+        # i.e., hotword list
+        _prev = [special_tokens["sot_prev"]]
+        # append hotword list to _prev
+        # ...
+        raise NotImplementedError
+    else:
+        _prev = []
+    
+    # language_id = special_tokens["sot"] + 1 + WHISPER_LANGS.index(language) 
+    language_id = torch.tensor(language).unsqueeze(-1).to(ys_pad.device)  # (B, 1)
+
+    if task == "transcribe":
+        task_id = special_tokens["transcribe"]
+    elif task == "translate":
+        task_id = special_tokens["translate"]
+    elif task == "vad":
+        task_id = special_tokens["no_speech"]
+    else:
+        raise NotImplementedError("unsupported task {}".format(task))
+    
+    _sot = _prev + [special_tokens["sot"], task_id]
+    _eot = torch.tensor([special_tokens["eot"]],
+                        dtype=torch.long,
+                        requires_grad=False,
+                        device=ys_pad.device)
+    ys = [y[y != ignore_id] for y in ys_pad]  # parse padded ys
+
+    if task == "transcribe" or task == "translate":
+        if no_timestamp:
+            _sot.append(special_tokens["no_timestamps"])
+        else:
+            _sot.append(special_tokens["timestamp_begin"])
+            # add subsequent tokens
+            # ...
+            raise NotImplementedError
+    elif task == "vad":
+        _sot.append(special_tokens["no_speech"])
+    else:
+        raise NotImplementedError
+
+    _sot = torch.tensor(_sot,
+                        dtype=torch.long,
+                        requires_grad=False,
+                        device=ys_pad.device)
+    ys_in = [torch.cat([_sot, y], dim=0) for y in ys]
+    ys_out = [torch.cat([_sot, y, _eot], dim=0) for y in ys]
+
+    for i in range(len(ys_in)):
+        ys_in[i] = torch.cat([ys_in[i][0:1], language_id[i], ys_in[i][1:]])
+        ys_out[i] = torch.cat([language_id[i], ys_out[i][1:]])
+
+    return pad_list(ys_in, special_tokens["eot"]), pad_list(ys_out, ignore_id)
+
+
 def reverse_pad_list(ys_pad: torch.Tensor,
                      ys_lens: torch.Tensor,
                      pad_value: float = -1.0) -> torch.Tensor:
@@ -299,3 +383,90 @@ def log_add(*args) -> float:
     a_max = max(args)
     lsp = math.log(sum(math.exp(a - a_max) for a in args))
     return a_max + lsp
+
+
+if __name__ == "__main__":
+    from transformers import WhisperProcessor
+
+    processor = WhisperProcessor.from_pretrained('/data1/yumingdong/model/finetuned/whisper-large-v3-lora700+700-130000/')
+    special_tokens = {'eot': 50258,
+                      'no_speech': 50363,
+                      'no_timestamps': 50364,
+                      'sot': 50258,
+                      'sot_prev': 50362,
+                      'timestamp_begin': 50365,
+                      'transcribe': 50360,
+                      'translate': 50359
+                      }
+    ignore_id = -1
+    ys_no_language = torch.tensor([
+        [91,   2415, 237, 12136, 237, 12136],
+        [91,   9455, 2131,  -1,    -1, -1],
+        [1654, 2131, 2131, -1,    -1,  -1],
+        [6404, 2131, -1,    -1,    -1, -1],
+        [2131, -1,   -1,    -1,    -1, -1]
+        ])
+    
+
+    ys_language = torch.tensor([
+        [50352,   91,   2415, 237, 12136, 103, 103],
+        [50353,  91,   9455, 2131,  -1,    -1, -1],
+        [50354, 1654, 2131, 2131, -1,    -1,  -1],
+        [50355, 6404, 2131, -1,    -1,    -1, -1],
+        [50358, 2131, -1,   -1,    -1,    -1, -1]
+        ])
+    keys = [
+        '50260|dadikefu00018696-0005730-0007210-S', 
+        '50358|haoweilai00000786-0306986-0308474-C', 
+        '50260|jingdongdigit00019295-0000000-0001480-S', 
+        '50355|beijingranqi00120127-0131940-0133390-C', 
+        '50358|dadikefu00026990-0052365-0053822-O',
+    ]
+    ys_pad = ys_no_language
+    prev_len = ys_pad.size(1)
+    ys_pad_lens = 7
+    # ys_in_pad, ys_out_pad = add_whisper_tokens(special_tokens,
+    #                                         ys_pad,
+    #                                         ignore_id,
+    #                                         task="transcribe",
+    #                                         no_timestamp=True,
+    #                                         language="zh",
+    #                                         use_prev=False)
+    ys_in_pad, ys_out_pad = add_whisper_tokens_multi_language(special_tokens,
+                                            ys_pad,
+                                            ignore_id,
+                                            task="transcribe",
+                                            no_timestamp=True,
+                                            language="yue",
+                                            use_prev=False,
+                                            keys=keys)
+    
+    cur_len = ys_in_pad.size(1)
+    ys_in_lens = ys_pad_lens + cur_len - prev_len
+    print(f'prev_len: {ys_pad.size(1)}')
+    print(f'ys_in_lens: {ys_in_lens}')
+    print(f'ys_in_pad: {ys_in_pad.shape}')
+    print(f'ys_out_pad: {ys_out_pad.shape}')
+    print(ys_in_pad)
+
+    ys_in = processor.batch_decode(ys_in_pad)
+    ys_out = processor.batch_decode(ys_out_pad)
+    # print(processor.batch_decode([[15, 4762, 12249, 91]]))
+    # print(WHISPER_LANGS)
+    for i in range(len(ys_in)):
+        print([ys_in[i]])
+        print(ys_out[i])
+        
+        
+'''
+['<|startoftranscript|><|zh|><|transcribe|><|notimestamps|>|宏洏�']
+<|zh|><|transcribe|><|notimestamps|>|宏洏�<|startoftranscript|>
+['<|startoftranscript|><|zh|><|transcribe|><|notimestamps|>|太好<|startoftranscript|><|startoftranscript|><|startoftranscript|>']
+<|zh|><|transcribe|><|notimestamps|>|太好<|startoftranscript|>
+['<|startoftranscript|><|zh|><|transcribe|><|notimestamps|>我好好<|startoftranscript|><|startoftranscript|><|startoftranscript|>']
+<|zh|><|transcribe|><|notimestamps|>我好好<|startoftranscript|>
+['<|startoftranscript|><|zh|><|transcribe|><|notimestamps|>也好<|startoftranscript|><|startoftranscript|><|startoftranscript|><|startoftranscript|>']
+<|zh|><|transcribe|><|notimestamps|>也好<|startoftranscript|>
+['<|startoftranscript|><|zh|><|transcribe|><|notimestamps|>好<|startoftranscript|><|startoftranscript|><|startoftranscript|><|startoftranscript|><|startoftranscript|>']
+<|zh|><|transcribe|><|notimestamps|>好<|startoftranscript|>
+'''

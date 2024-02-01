@@ -27,8 +27,8 @@ import torchaudio.compliance.kaldi as kaldi
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
 from wenet.text.base_tokenizer import BaseTokenizer
-
 torchaudio.utils.sox_utils.set_buffer_size(16500)
+
 
 AUDIO_FORMAT_SETS = set(['flac', 'mp3', 'm4a', 'ogg', 'opus', 'wav', 'wma'])
 
@@ -149,6 +149,8 @@ def parse_raw(data):
             example = copy.deepcopy(obj)  # copy and keep all the fields
             example['wav'] = waveform  # overwrite wav
             example['sample_rate'] = sample_rate
+            if 'language' in obj:
+                example['language'] = obj['language']
             yield example
         except Exception as ex:
             logging.warning('Failed to read {}'.format(wav_file))
@@ -631,7 +633,11 @@ def padding(data):
                                      dtype=torch.int32)
         wav_lengths = torch.tensor([x.size(0) for x in sorted_wavs],
                                    dtype=torch.int32)
-
+        if sample[0].get('language') is not None:
+            language_id = [sample[i]['language'] for i in order]
+        else:
+            language_id = None
+            
         padded_feats = pad_sequence(sorted_feats,
                                     batch_first=True,
                                     padding_value=0)
@@ -649,7 +655,9 @@ def padding(data):
             "target_lengths": label_lengths,
             "pcm": padded_wavs,
             "pcm_length": wav_lengths,
+            "language": language_id
         }
+
         if 'speaker' in sample[0]:
             speaker = torch.tensor([sample[i]['speaker'] for i in order],
                                    dtype=torch.int32)

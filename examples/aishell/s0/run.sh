@@ -17,7 +17,7 @@ export CUDA_VISIBLE_DEVICES="${gpu_list}"
 echo "CUDA_VISIBLE_DEVICES is ${CUDA_VISIBLE_DEVICES}"
 
 stage=0 # start from 0 if you need to start from data preparation
-stop_stage=5
+stop_stage=3
 
 # You should change the following two parameters for multiple machine training,
 # see https://pytorch.org/docs/stable/elastic/run.html
@@ -27,7 +27,7 @@ job_id=2023
 
 # The aishell dataset location, please change this to your own path
 # make sure of using absolute path. DO-NOT-USE relatvie path!
-data=/export/data/asr-data/OpenSLR/33/
+data=/data2/yumingdong/wavs/raw/data_aishell/
 data_url=www.openslr.org/resources/33
 
 nj=16

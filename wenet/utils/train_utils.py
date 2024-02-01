@@ -122,7 +122,7 @@ def add_ddp_args(parser):
 
 def add_deepspeed_args(parser):
     parser.add_argument('--timeout',
-                        default=30,
+                        default=120,
                         type=int,
                         help='timeout (in seconds) of wenet_join. ' +
                         '30s for aishell & 300s for wenetspeech')
