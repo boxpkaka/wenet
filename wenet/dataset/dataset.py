@@ -122,7 +122,8 @@ def Dataset(data_type,
             conf,
             bpe_model=None,
             non_lang_syms=None,
-            partition=True):
+            partition=True,
+            codebook_file=None):
     """ Construct dataset from arguments
 
         We have two shuffle stage in the Dataset. The first is global
@@ -134,7 +135,7 @@ def Dataset(data_type,
             bpe_model(str): model for english bpe part
             partition(bool): whether to do data partition in terms of rank
     """
-    assert data_type in ['raw', 'shard']
+    assert data_type in ['raw', 'shard', 'distillation']
     lists = read_lists(data_list_file)
     shuffle = conf.get('shuffle', True)
     dataset = DataList(lists, shuffle=shuffle, partition=partition)
@@ -187,6 +188,9 @@ def Dataset(data_type,
         sort_conf = conf.get('sort_conf', {})
         dataset = Processor(dataset, processor.sort, **sort_conf)
 
+    if codebook_file is not None:
+        dataset = Processor(dataset, processor.add_codebook, codebook_file)
+    
     batch_conf = conf.get('batch_conf', {})
     dataset = Processor(dataset, processor.batch, **batch_conf)
     dataset = Processor(dataset, processor.padding)

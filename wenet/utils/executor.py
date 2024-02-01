@@ -52,11 +52,13 @@ class Executor:
         num_seen_utts = 0
         with model_context():
             for batch_idx, batch in enumerate(data_loader):
-                key, feats, target, feats_lengths, target_lengths = batch
+                key, feats, target, feats_lengths, target_lengths, codebook = batch
                 feats = feats.to(device)
                 target = target.to(device)
                 feats_lengths = feats_lengths.to(device)
                 target_lengths = target_lengths.to(device)
+                if codebook is not None:
+                    codebook = codebook.to(device)
                 num_utts = target_lengths.size(0)
                 if num_utts == 0:
                     continue
@@ -76,7 +78,7 @@ class Executor:
                     # https://pytorch.org/docs/stable/notes/amp_examples.html
                     with torch.cuda.amp.autocast(scaler is not None):
                         loss_dict = model(feats, feats_lengths, target,
-                                          target_lengths)
+                                          target_lengths, codebook)
                         loss = loss_dict['loss'] / accum_grad
                     if use_amp:
                         scaler.scale(loss).backward()

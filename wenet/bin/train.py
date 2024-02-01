@@ -116,7 +116,10 @@ def get_args():
                         type=lambda s: [str(mod) for mod in s.split(",") if s != ""],
                         help="List of encoder modules \
                         to initialize ,separated by a comma")
-
+    parser.add_argument("--codebook",
+                        default=None,
+                        type=str,
+                        help="Codebook for distillation")
 
     args = parser.parse_args()
     return args
@@ -154,8 +157,15 @@ def main():
     cv_conf['shuffle'] = False
     non_lang_syms = read_non_lang_symbols(args.non_lang_syms)
 
-    train_dataset = Dataset(args.data_type, args.train_data, symbol_table,
-                            train_conf, args.bpe_model, non_lang_syms, True)
+    train_dataset = Dataset(args.data_type, 
+                            args.train_data, 
+                            symbol_table,
+                            train_conf, 
+                            args.bpe_model, 
+                            non_lang_syms, 
+                            True,
+                            codebook_file=args.codebook)
+    
     cv_dataset = Dataset(args.data_type,
                          args.cv_data,
                          symbol_table,
@@ -194,7 +204,6 @@ def main():
 
     # Init asr model from configs
     model = init_model(configs)
-    print(model)
     num_params = sum(p.numel() for p in model.parameters())
     print('the number of model params: {:,d}'.format(num_params))
 

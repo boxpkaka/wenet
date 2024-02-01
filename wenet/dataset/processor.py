@@ -631,6 +631,13 @@ def padding(data):
         sorted_labels = [
             torch.tensor(sample[i]['label'], dtype=torch.int64) for i in order
         ]
+        if sample[0].get('codebook') is not None:
+            sorted_codebook = [sample[i]['codebook'] for i in order]
+            padded_codebook = pad_sequence(sorted_codebook,
+                                           batch_first=True,
+                                           padding_value=0)
+        else:
+            padded_codebook = None
         label_lengths = torch.tensor([x.size(0) for x in sorted_labels],
                                      dtype=torch.int32)
 
@@ -642,7 +649,7 @@ def padding(data):
                                       padding_value=-1)
 
         yield (sorted_keys, padded_feats, padding_labels, feats_lengths,
-               label_lengths)
+               label_lengths, padded_codebook)
         
 
 def add_codebook(data, codebook_file):
@@ -656,10 +663,10 @@ def add_codebook(data, codebook_file):
     """
 
     with h5py.File(codebook_file, 'r') as f:
-        codebooks = {key: torch.from_numpy(f[key]) for key in f.keys()}
+        codebooks = {key: torch.from_numpy(f[key][:]).to(torch.int64).squeeze(0) for key in f.keys()}
 
     for sample in data:
-        assert 'keys' in sample
-        key = sample['keys']
+        assert 'key' in sample
+        key = sample['key']
         sample['codebook'] = codebooks.get(key, None)
         yield sample

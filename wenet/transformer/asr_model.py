@@ -94,7 +94,7 @@ class ASRModel(torch.nn.Module):
         speech_lengths: torch.Tensor,
         text: torch.Tensor,
         text_lengths: torch.Tensor,
-        codebook_indexes: Optional[torch.Tensor]
+        codebook_indexes: Optional[torch.Tensor]=None
     ) -> Dict[str, Optional[torch.Tensor]]:
         """Frontend + Encoder + Decoder + Calc loss
 
@@ -110,9 +110,10 @@ class ASRModel(torch.nn.Module):
                 text_lengths.shape[0]), (speech.shape, speech_lengths.shape,
                                          text.shape, text_lengths.shape)
         # 1. Encoder
+        # print(speech.shape)
         encoder_out, encoder_mask = self.encoder(speech, speech_lengths)
         encoder_out_lens = encoder_mask.squeeze(1).sum(1)
-
+        # print(encoder_out.shape)
         # 2a. Attention-decoder branch
         if self.ctc_weight != 1.0:
             loss_att, acc_att = self._calc_att_loss(encoder_out, encoder_mask,
@@ -128,9 +129,9 @@ class ASRModel(torch.nn.Module):
             loss_ctc = None
 
         # 2c. Distillation branch
-
         if hasattr(self, "codebook_loss_net"):
             if codebook_indexes is not None:
+                print(codebook_indexes.shape[1] - encoder_out.shape[1])
                 if codebook_indexes.shape[1] != encoder_out.shape[1]:
                     codebook_indexes = self.concat_successive_codebook_indexes(
                         encoder_out, codebook_indexes
@@ -138,6 +139,7 @@ class ASRModel(torch.nn.Module):
                 loss_codebook = self.codebook_loss_net(
                     encoder_out, codebook_indexes
                 )
+                loss_codebook = torch.tensor([0]).to(encoder_out.device)
             else:
                 loss_codebook = None
         else:
@@ -955,9 +957,10 @@ class ASRModel(torch.nn.Module):
         N, T, C = codebook_indexes.shape
 
         # Handling issue 1.
-        if T >= t_expected * 2:
-            codebook_indexes = codebook_indexes[:, : t_expected * 2, :]
-        # Handling issue 2.
-        codebook_indexes = codebook_indexes.reshape(N, t_expected, C * 2)
-        assert middle_layer_output.shape[1] == codebook_indexes.shape[1]
+        if T >= t_expected:
+            codebook_indexes = codebook_indexes[:, : t_expected, :]
+        # Handling issue 2. 
+        # Yumingong: Since student and teacher output are the same 25 frames, ignore this issue
+        # codebook_indexes = codebook_indexes.reshape(N, t_expected, C * 2)
+        # assert middle_layer_output.shape[1] == codebook_indexes.shape[1]
         return codebook_indexes

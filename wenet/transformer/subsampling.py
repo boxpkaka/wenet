@@ -238,3 +238,13 @@ class Conv2dSubsampling8(BaseSubsampling):
         x = self.linear(x.transpose(1, 2).contiguous().view(b, t, c * f))
         x, pos_emb = self.pos_enc(x, offset)
         return x, pos_emb, x_mask[:, :, 2::2][:, :, 2::2][:, :, 2::2]
+
+
+if __name__ == "__main__":
+    from embedding import PositionalEncoding
+    pos_enc = PositionalEncoding(d_model=80, dropout_rate=0)
+    model = Conv2dSubsampling4(idim=80, odim=80, dropout_rate=0, pos_enc_class=pos_enc)
+    inputs = torch.randn(1, 410, 80)
+    masks = torch.randn(1, 1, 410)
+    output = model(inputs, masks)[0]
+    print(output.shape)
