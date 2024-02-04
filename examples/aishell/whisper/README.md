@@ -94,4 +94,4 @@ python local/filter_ckpt.py \
 
 - 非官方支持多语种训练和指定语种推理
 - wenet官方多语种支持进度参照：[Pull Request #2334](https://github.com/wenet-e2e/wenet/pull/2334)
-- 涉及CTC解码产生乱码，参照[Issue](#Frequently-Asked-Questions)
+- 涉及CTC解码产生乱码，参照[Frequently Asked Questions](#Frequently-Asked-Questions)

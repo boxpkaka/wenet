@@ -6,34 +6,15 @@ from wenet.utils.train_utils import check_modify_and_save_config
 import yaml
 import torch
 import argparse
+from transformers import WhisperModel
 
 
-def get_whisper_encoder_from_checkpoint(
-        model_dir:str, 
-        device: torch.device, 
-        dtype: torch.dtype
-        ):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--checkpoint', type=str, default=model_dir)
-    parser.add_argument('--deepspeed_config', type=str, default='../whisper/conf/ds_stage1.json')
-    parser.add_argument('--train_engine', type=str, default='deepspeed')
-    parser.add_argument('--use_amp', type=bool, default=True)
-    parser.add_argument('--model_dir', type=str, default='./')
-    parser.add_argument('--save_states', type=str, default='only model')
-    parser.add_argument('--jit', type=bool, default=False)
-    args = parser.parse_args()
-
-    config_path = './conf/wenet_whisper.yaml'
-    with open(config_path, 'r') as fin:
-        configs = yaml.load(fin, Loader=yaml.FullLoader)
-
+def get_encoder_from_wenet(args, configs):
     tokenizer = init_tokenizer(configs)
     configs['vocab_size'] = tokenizer.vocab_size()
     configs = check_modify_and_save_config(args, configs, tokenizer.symbol_table)
 
     model, configs = init_model(args, configs)
-    model = model.to(device).to(dtype)
-
     # params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     # print(f"Number of parameters: {params / 1e6:.2f}M")
     whisper_encoder = model.encoder
@@ -41,8 +22,18 @@ def get_whisper_encoder_from_checkpoint(
     return whisper_encoder
 
 
+def get_encoder_from_huggingface(
+        model_dir:str, 
+        device: torch.device, 
+        dtype: torch.dtype
+):
+    model = WhisperModel.from_pretrained(model_dir).to(device).to(dtype)
+    encoder = model.encoder
+    return encoder
+
+
 if __name__ == "__main__":
-    encoder = get_whisper_encoder_from_checkpoint(model_dir='../whisper/exp/finetune_whisper_largev3_conv2d4_zh_yue50+zh50/final.pt',
+    encoder = get_encoder_from_wenet(model_dir='../whisper/exp/finetune_whisper_largev3_conv2d4_zh_yue50+zh50/final.pt',
                                                   device=torch.device('cuda:7'),
                                                   dtype=torch.bfloat16)
     
