@@ -248,6 +248,7 @@ def main():
             target = batch["target"].to(device)
             feats_lengths = batch["feats_lengths"].to(device)
             target_lengths = batch["target_lengths"].to(device)
+            language_kwargs = {'language': args.args.language}
             results = model.decode(
                 args.modes,
                 feats,
@@ -261,7 +262,7 @@ def main():
                 context_graph=context_graph,
                 blank_id=blank_id,
                 blank_penalty=args.blank_penalty,
-                language=args.language)
+                **language_kwargs)
             for i, key in enumerate(keys):
                 for mode, hyps in results.items():
                     tokens = hyps[i].tokens
