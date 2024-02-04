@@ -78,9 +78,9 @@ python local/filter_ckpt.py \
 </p>
 
 
-- `Transformers` => `OpenAI`：`local/convert_hf_to_openai.sh` 一般用于transformers => wenet的中间格式
-- `OpenAI` => `Transformers`: `local/convert_openai_to_hf.sh`
-- `OpenAI` => `Wenet`: 
+- Transformers => OpenAI：`local/convert_hf_to_openai.sh` 一般用于transformers => wenet的中间格式
+- OpenAI => Transformers: `local/convert_openai_to_hf.sh`
+- OpenAI => Wenet: 
   -  `local/convert2wenet.sh` 仅修改网络层名，保留全部参数
   -  `local/filter_whisper.sh` 丢弃卷积下采样层参数
 
