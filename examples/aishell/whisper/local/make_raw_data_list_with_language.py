@@ -55,14 +55,14 @@ def make_data_list(root_dir_list: list, output_dir: list) -> None:
 
 def main():
     '''
-    root_dir_list: List[[<data_dir>, <language>], ...]
+    root_dir_list: <data_dir>, <language>
     data_dir: 包含wav.scp和text
     '''
     root_dir_list = [
-        ['/data2/yumingdong/data/raw/wenet/test_1000Cantonese', 'yue'],
-        ['/data2/yumingdong/data/raw/wenet/test_1000Cantonese', 'zh']
+        ['/data2/yumingdong/data/raw/wenet/mandarin_100h', 'zh'],
+        ['/data2/yumingdong/data/raw/wenet/cantonese_100h', 'yue']
     ]
-    output_dir = '/data2/yumingdong/data/raw/wenet_data_list/test_1000Cantonese'
+    output_dir = '/data2/yumingdong/data/raw/wenet_data_list/yue100+zh100'
     make_data_list(root_dir_list, output_dir)
 
 

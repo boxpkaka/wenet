@@ -162,6 +162,10 @@ def get_args():
                         default=0.0,
                         help='''The higher the score, the greater the degree of
                                 bias using decoding-graph for biasing''')
+    parser.add_argument('--language',
+                        type=str,
+                        default='yue',
+                        help='''Language prompt when whisper decoding''')
     args = parser.parse_args()
     print(args)
     return args
@@ -256,7 +260,8 @@ def main():
                 reverse_weight=args.reverse_weight,
                 context_graph=context_graph,
                 blank_id=blank_id,
-                blank_penalty=args.blank_penalty)
+                blank_penalty=args.blank_penalty,
+                language=args.language)
             for i, key in enumerate(keys):
                 for mode, hyps in results.items():
                     tokens = hyps[i].tokens

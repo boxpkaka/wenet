@@ -2,7 +2,6 @@ import multi_quantization as quantization
 
 import torch
 import logging
-logging.getLogger().setLevel(logging.INFO)
 
 
 def main():
@@ -20,7 +19,8 @@ def main():
 
 
     train, valid = quantization.read_hdf5_data(embedding_file_path)
-
+    logging.getLogger().setLevel(logging.INFO)
+    
     def minibatch_generator(data: torch.Tensor, repeat: bool):
         assert 3 * B < data.shape[0]
         cur_offset = 0
@@ -29,10 +29,9 @@ def main():
             end = start + B
             cur_offset += B
             yield data[start:end, :].to(device).to(dtype=torch.float)
-    cnt = 0
+
     for x in minibatch_generator(train, repeat=True):
         trainer.step(x)
-        cnt += 1
         if trainer.done():
             break
 

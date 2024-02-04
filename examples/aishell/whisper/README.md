@@ -58,3 +58,27 @@ python local/filter_ckpt.py \
 | ctc greedy search         | 6.87  |
 | ctc prefix beam search    | 6.87  |
 | attention rescoring       | 5.33  |
+## Self-learning
+
+#### 模型地址
+
+​	`/data1/yumingdong/model`
+
+#### 格式转换
+
+- 转换关系如图
+
+<img src="./img/whisper-format-convert.png" alt="whisper-format-convert" style="zoom: 25%;" />
+
+- `Transformers` => `OpenAI`：`local/convert_hf_to_openai.sh` 一般用于transformers => wenet的中间格式
+- `OpenAI` => `Transformers`: `local/convert_openai_to_hf.sh`
+- `OpenAI` => `Wenet`: 
+  -  `local/convert2wenet.sh` 仅修改网络层名，保留全部参数
+  -  `local/filter_whisper.sh` 丢弃卷积下采样层参数
+
+#### 训练
+
+- 数据准备：参照`local/make_raw_data_list_with_language.py` ，依赖Transformers的`tokenizer.json`文件
+
+- `run.sh`
+

@@ -252,6 +252,7 @@ def attention_beam_search(
     encoder_out: torch.Tensor,
     encoder_mask: torch.Tensor,
     beam_size: int = 10,
+    language: str = 'yue'
 ) -> List[DecodeResult]:
     device = encoder_out.device
     batch_size = encoder_out.shape[0]
@@ -272,7 +273,7 @@ def attention_beam_search(
         # TODO(xcsong): add args for language, task, etc
         hyps[:, 0] = model.special_tokens["sot"]
         hyps[:,
-             1] = model.special_tokens["sot"] + 1 + WHISPER_LANGS.index("zh")
+             1] = model.special_tokens["sot"] + 1 + WHISPER_LANGS.index(language)
         hyps[:, 2] = model.special_tokens["transcribe"]
         hyps[:, 3] = model.special_tokens["no_timestamps"]
     else:

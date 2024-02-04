@@ -169,6 +169,7 @@ class Whisper(ASRModel):
         context_graph: ContextGraph = None,
         blank_id: int = 0,
         blank_penalty: float = 0.0,
+        language: str = 'yue'
     ) -> Dict[str, List[DecodeResult]]:
         """ Decode input speech
 
@@ -205,7 +206,7 @@ class Whisper(ASRModel):
         results = {}
         if 'attention' in methods:
             results['attention'] = attention_beam_search(
-                self, encoder_out, encoder_mask, beam_size)
+                self, encoder_out, encoder_mask, beam_size, language)
         if 'ctc_greedy_search' in methods:
             results['ctc_greedy_search'] = ctc_greedy_search(
                 ctc_probs, encoder_lens, blank_id)

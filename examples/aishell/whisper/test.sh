@@ -15,16 +15,16 @@ fi
 
 count_wer_only=false
 test_set_dir=/data2/yumingdong/data/raw/wenet/
-test_set_name=aishell/test 
-dir=/data1/yumingdong/offical/wenet/examples/aishell/whisper/exp/whisper-large-v3_multi_lang_yue_50h+zh_50h
-gpu=2
+test_set_name=test_commonvoicecantonese
+dir=/data1/yumingdong/offical/wenet/examples/aishell/whisper/exp/whisper-large-v3_multi_lang_yue_50h+zh_50h_ctc_0_conv2d4
+gpu=0
 
 decode_checkpoint=$dir/final.pt
 data_dir=$test_set_dir/${test_set_name}
 
 average_checkpoint=false
 average_num=5
-decode_modes="ctc_greedy_search ctc_prefix_beam_search attention attention_rescoring"
+decode_modes="attention"
 
 . tools/parse_options.sh || exit 1;
 
@@ -48,7 +48,7 @@ fi
 # for non-streaming inference.
 if [ ${count_wer_only} == false ]; then
   decoding_chunk_size=-1
-  ctc_weight=0.3
+  ctc_weight=0.0
   reverse_weight=0.5
   python wenet/bin/recognize.py --gpu $gpu \
     --modes $decode_modes \
@@ -62,6 +62,7 @@ if [ ${count_wer_only} == false ]; then
     --ctc_weight $ctc_weight \
     --reverse_weight $reverse_weight \
     --result_dir $dir/$test_set_name \
+    --language 'yue' \
     ${decoding_chunk_size:+--decoding_chunk_size $decoding_chunk_size} \
     # --simulate_streaming 
 fi
