@@ -614,10 +614,10 @@ def padding(data):
     """ Padding the data into training data
 
         Args:
-            data: Iterable[List[{key, feat, label}]]
+            data: Iterable[List[{key, feat, label, codebook}]]
 
         Returns:
-            Iterable[Tuple(keys, feats, labels, feats lengths, label lengths)]
+            Iterable[Tuple(keys, feats, labels, feats lengths, label lengths, codebook)]
     """
     for sample in data:
         assert isinstance(sample, list)
@@ -647,7 +647,6 @@ def padding(data):
         padding_labels = pad_sequence(sorted_labels,
                                       batch_first=True,
                                       padding_value=-1)
-
         yield (sorted_keys, padded_feats, padding_labels, feats_lengths,
                label_lengths, padded_codebook)
         
@@ -668,5 +667,10 @@ def add_codebook(data, codebook_file):
     for sample in data:
         assert 'key' in sample
         key = sample['key']
-        sample['codebook'] = codebooks.get(key, None)
+        if key in codebooks:
+            sample['codebook'] = codebooks[key]
+        else:
+            logging.warning(f'No codebook entry found for key: {key}')
+            sample['codebook'] = None
+            
         yield sample

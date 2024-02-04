@@ -209,3 +209,16 @@ export NCCL_P2P_DISABLE=1
 
    - 将`$out_dir/data/lang_test/TLG.fst`替换`$model_dir/graph/TLG.fst`.
    - text 为第一步清洗后的文本
+
+### K2码本蒸馏
+
+- 配置文件，可参照`conf/train_k2_distillation.yaml`：
+  - `model_conf`下增添2个参数：
+    - `num_codebooks`：码本维度，默认`8`，与量化器的`out_dim`一致
+    - `codebook_weigth`：蒸馏损失权重，默认`0.1`
+  - `filter_conf` ：需与教师模型一致
+  - `speed_perturb`：需设为`false`，否则帧数无法对齐
+
+- 注意事项
+  - 码本损失是帧级损失，教师和学生模型的帧长需要保持一致（在线模型为25ms）
+  - 不同采样率的模型处理相同的音频时，可能出现1到2的帧数差异，下采样后时间维度差异最高为6，k2官方做法为截断，参照`concat_successive_codebook_indexes()`，位于`wenet/transformers/asr_model.py`

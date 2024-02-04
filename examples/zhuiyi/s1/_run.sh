@@ -26,7 +26,7 @@ average_num=5
 bpe_model=
 gpus="7"
 lr=0.0004
-batch_size=16
+batch_size=1
 epoch=20
 warmup_steps=500
 accum_grad=2
@@ -51,10 +51,10 @@ cpus=-1
 # fi
 
 export CUDA_VISIBLE_DEVICES=$gpus
-data_dir=/data2/yumingdong/data/raw/wenet/aishell/
+data_dir=/data2/yumingdong/data/raw/wenet_data_list/yue_50h+zh_50h_2
 model_dir=/data1/yumingdong/model/wenet/asr_model_v4.5.0/
 out_dir='./exp/unified_conformer/'
-codebook_path=/data1/yumingdong/offical/wenet/examples/aishell/distilation/codebook/yue_100+zh_100_codebook.h5
+codebook_path=/data1/yumingdong/offical/wenet/examples/aishell/distilation/codebook/yue50+zh50-model_zh_yue50+zh50.h5
 
 self_learning=$model_dir/self_learning
 
@@ -131,7 +131,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
       --ddp.world_size $world_size \
       --ddp.rank $rank \
       --ddp.dist_backend $dist_backend \
-      --num_workers 4 \
+      --num_workers 8 \
       $cmvn_opts \
       --pin_memory
   } &

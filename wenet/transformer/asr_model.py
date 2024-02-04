@@ -56,7 +56,6 @@ class ASRModel(torch.nn.Module):
         lsm_weight: float = 0.0,
         length_normalized_loss: bool = False,
         num_codebooks: int = 0,
-        codebook_dim: int = 384,
         codebook_weigth: float = 0.5
     ):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
@@ -80,8 +79,9 @@ class ASRModel(torch.nn.Module):
             normalize_length=length_normalized_loss,
         )
         if num_codebooks > 0:
+            encoder_output_size = self.encoder.output_size()
             self.codebook_loss_net = JointCodebookLoss(
-                predictor_channels=codebook_dim,
+                predictor_channels=encoder_output_size,
                 num_codebooks=num_codebooks,
                 is_joint=False,
                 checkpoint=False
@@ -110,10 +110,8 @@ class ASRModel(torch.nn.Module):
                 text_lengths.shape[0]), (speech.shape, speech_lengths.shape,
                                          text.shape, text_lengths.shape)
         # 1. Encoder
-        # print(speech.shape)
         encoder_out, encoder_mask = self.encoder(speech, speech_lengths)
         encoder_out_lens = encoder_mask.squeeze(1).sum(1)
-        # print(encoder_out.shape)
         # 2a. Attention-decoder branch
         if self.ctc_weight != 1.0:
             loss_att, acc_att = self._calc_att_loss(encoder_out, encoder_mask,
@@ -131,7 +129,6 @@ class ASRModel(torch.nn.Module):
         # 2c. Distillation branch
         if hasattr(self, "codebook_loss_net"):
             if codebook_indexes is not None:
-                print(codebook_indexes.shape[1] - encoder_out.shape[1])
                 if codebook_indexes.shape[1] != encoder_out.shape[1]:
                     codebook_indexes = self.concat_successive_codebook_indexes(
                         encoder_out, codebook_indexes
@@ -139,7 +136,6 @@ class ASRModel(torch.nn.Module):
                 loss_codebook = self.codebook_loss_net(
                     encoder_out, codebook_indexes
                 )
-                loss_codebook = torch.tensor([0]).to(encoder_out.device)
             else:
                 loss_codebook = None
         else:
@@ -960,7 +956,7 @@ class ASRModel(torch.nn.Module):
         if T >= t_expected:
             codebook_indexes = codebook_indexes[:, : t_expected, :]
         # Handling issue 2. 
-        # Yumingong: Since student and teacher output are the same 25 frames, ignore this issue
+        # NOTE(Yumingong): Since student and teacher outputs are the same 25 frames, ignore this issue
         # codebook_indexes = codebook_indexes.reshape(N, t_expected, C * 2)
         # assert middle_layer_output.shape[1] == codebook_indexes.shape[1]
         return codebook_indexes

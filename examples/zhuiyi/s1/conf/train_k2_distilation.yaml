@@ -1,0 +1,85 @@
+accum_grad: 16
+cmvn_file: asr_model_v4.5.0/self_learning/exp/global_cmvn
+dataset_conf:
+  batch_conf:
+    batch_size: 48
+    batch_type: dynamic
+    max_frames_in_batch: 24000
+  fbank_conf:
+    dither: 1.0
+    frame_length: 25
+    frame_shift: 10
+    num_mel_bins: 80
+  filter_conf:
+    max_length: 3000
+    min_length: 0
+    token_max_length: 448
+    token_min_length: 1
+  resample_conf:
+    resample_rate: 8000
+  shuffle: true
+  shuffle_conf:
+    shuffle_size: 1500
+  sort: true
+  sort_conf:
+    sort_size: 500
+  spec_aug: true
+  spec_aug_conf:
+    max_f: 10
+    max_t: 50
+    num_f_mask: 2
+    num_t_mask: 2
+  speed_perturb: false
+decoder: transformer
+decoder_conf:
+  attention_heads: 6
+  dropout_rate: 0.1
+  linear_units: 2048
+  num_blocks: 6
+  positional_dropout_rate: 0.1
+  self_attention_dropout_rate: 0.1
+  src_attention_dropout_rate: 0.1
+encoder: conformer
+encoder_conf:
+  activation_type: swish
+  attention_dropout_rate: 0.1
+  attention_heads: 6
+  causal: true
+  cnn_module_kernel: 15
+  cnn_module_norm: layer_norm
+  dropout_rate: 0.1
+  input_layer: conv2d
+  linear_units: 2048
+  normalize_before: true
+  num_blocks: 12
+  output_size: 384
+  pos_enc_layer_type: rel_pos
+  positional_dropout_rate: 0.1
+  selfattention_layer_type: rel_selfattn
+  use_cnn_module: true
+  use_dynamic_chunk: true
+  use_dynamic_left_chunk: false
+grad_clip: 5
+input_dim: 80
+is_json_cmvn: true
+log_interval: 500
+max_epoch: 150
+model_conf:
+  ctc_weight: 0.3
+  length_normalized_loss: false
+  lsm_weight: 0.1
+  num_codebooks: 8
+  codebook_weigth: 0.2
+optim: adam
+optim_conf:
+  lr: 0.002
+output_dim: 6045
+scheduler: warmuplr
+scheduler_conf:
+  warmup_steps: 20000
+tokenizer: char
+tokenizer_conf:
+  split_with_space: false
+  symbol_table_path: /data1/yumingdong/model/wenet/asr_model_v4.5.0/lang_char.txt
+  non_lang_syms_path: null
+
