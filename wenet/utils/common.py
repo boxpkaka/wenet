@@ -251,7 +251,7 @@ def add_whisper_tokens_multi_language(
         special_tokens: get IDs of special tokens
         ignore_id (int): index of padding
         no_timestamp (bool): whether to add timestamps tokens
-        language (str): language tag
+        language (str): language token id 
 
     Returns:
         ys_in (torch.Tensor) : (B, Lmax + ?)
@@ -267,8 +267,11 @@ def add_whisper_tokens_multi_language(
     else:
         _prev = []
     
-    # language_id = special_tokens["sot"] + 1 + WHISPER_LANGS.index(language) 
-    language_id = torch.tensor(language).unsqueeze(-1).to(ys_pad.device)  # (B, 1)
+    # default language set as 'zh'
+    if language is None:
+        language_id = torch.full((ys_in.shape[0], 1), fill_value=50260)
+    else:
+        language_id = torch.tensor(language).unsqueeze(-1).to(ys_pad.device)  # (B, 1)
 
     if task == "transcribe":
         task_id = special_tokens["transcribe"]

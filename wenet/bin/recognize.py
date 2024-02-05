@@ -248,7 +248,7 @@ def main():
             target = batch["target"].to(device)
             feats_lengths = batch["feats_lengths"].to(device)
             target_lengths = batch["target_lengths"].to(device)
-            language_kwargs = {'language': args.args.language}
+            language_kwargs = {'language': args.language}
             results = model.decode(
                 args.modes,
                 feats,

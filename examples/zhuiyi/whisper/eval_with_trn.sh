@@ -2,7 +2,7 @@
 
 std_root_dir=/data2/yumingdong/data/raw/wenet
 exp_dir=/data1/yumingdong/offical/wenet/examples/aishell/whisper/exp/whisper-large-v3_multi_lang_yue_50h+zh_50h_ctc_0_conv2d4
-dataset=test_1000Cantonese
+dataset=aishell/test
 decode_mode=attention
 
 # copy the std.trn to target

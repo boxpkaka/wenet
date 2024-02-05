@@ -15,7 +15,7 @@ fi
 
 count_wer_only=false
 test_set_dir=/data2/yumingdong/data/raw/wenet/
-test_set_name=test_commonvoicecantonese
+test_set_name=aishell/test
 dir=/data1/yumingdong/offical/wenet/examples/aishell/whisper/exp/whisper-large-v3_multi_lang_yue_50h+zh_50h_ctc_0_conv2d4
 gpu=0
 
@@ -62,7 +62,7 @@ if [ ${count_wer_only} == false ]; then
     --ctc_weight $ctc_weight \
     --reverse_weight $reverse_weight \
     --result_dir $dir/$test_set_name \
-    --language 'yue' \
+    --language zh \
     ${decoding_chunk_size:+--decoding_chunk_size $decoding_chunk_size} \
     # --simulate_streaming 
 fi
