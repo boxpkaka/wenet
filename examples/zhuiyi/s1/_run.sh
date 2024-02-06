@@ -53,11 +53,12 @@ cpus=-1
 export CUDA_VISIBLE_DEVICES=$gpus
 data_dir=/data2/yumingdong/data/raw/wenet_data_list/yue_50h+zh_50h_2
 model_dir=/data1/yumingdong/model/wenet/asr_model_v4.5.0/
-out_dir='./exp/unified_conformer/'
-codebook_path=/data1/yumingdong/offical/wenet/examples/aishell/distilation/codebook/yue50+zh50-model_zh_yue50+zh50.h5
+out_dir='./exp/test/'
+tensorboard_dir=$out_dir/tensorboard
+
+codebook_path=/data1/yumingdong/offical/wenet/examples/zhuiyi/distilation/codebook/yue50+zh50-model_zh_yue50+zh50.h5
 
 self_learning=$model_dir/self_learning
-
 train_config=$self_learning/exp/train.yaml
 dict=$model_dir/lang_char.txt
 checkpoint=$self_learning/exp/init.pt
@@ -78,6 +79,7 @@ fi
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   echo "$(date) stage 1: 开始训练."
   mkdir -p $out_dir
+  mkdir -p $tensorboard_dir
   # INIT_FILE is for DDP synchronization
   INIT_FILE=$out_dir/ddp_init
   if [ -f $INIT_FILE ]; then
@@ -126,6 +128,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
       --cv_data $data_dir/$dev_set/data.list \
       ${codebook_path:+--codebook $codebook_path} \
       ${checkpoint:+--checkpoint $checkpoint} \
+      ${tensorboard_dir:+--tensorboard_dir $tensorboard_dir} \
       --model_dir $out_dir \
       --ddp.init_method $init_method \
       --ddp.world_size $world_size \

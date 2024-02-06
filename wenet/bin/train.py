@@ -164,7 +164,7 @@ def main():
                             args.bpe_model, 
                             non_lang_syms, 
                             True,
-                            codebook_file=args.codebook)
+                            codebook_file=getattr(args, 'codebook', None))
     
     cv_dataset = Dataset(args.data_type,
                          args.cv_data,

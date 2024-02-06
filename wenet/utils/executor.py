@@ -89,6 +89,8 @@ class Executor:
                 if batch_idx % accum_grad == 0:
                     if rank == 0 and writer is not None:
                         writer.add_scalar('train_loss', loss, self.step)
+                        if loss_dict.get('loss_codebook') is not None:
+                            writer.add_scalar('codebook_loss', loss_dict['loss_codebook'], self.step)
                     # Use mixed precision training
                     if use_amp:
                         scaler.unscale_(optimizer)

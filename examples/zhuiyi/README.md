@@ -53,15 +53,15 @@ export NCCL_P2P_DISABLE=1
 ## 构建解码图
 
    ```bash
-   ./local/make_tlg.sh
+./local/make_tlg.sh
    ```
 
    需要准备
 
-   1. 端到端模型对应的符号表.
-   2. 语料, 需要经过分词.
-   3. 词典, 要和语料分词使用的词典保持一致. 参考`local/resource_zhuiyi/lexicon.txt`.
-   4. 需要指定srlim工具包路径到PATH变量, 一般使用kaldi tools中的srilm即可.
+      1. 端到端模型对应的符号表.
+      2. 语料, 需要经过分词.
+      3. 词典, 要和语料分词使用的词典保持一致. 参考`local/resource_zhuiyi/lexicon.txt`.
+      4. 需要指定srlim工具包路径到PATH变量, 一般使用kaldi tools中的srilm即可.
 
 ## 解码
 
@@ -78,6 +78,7 @@ export NCCL_P2P_DISABLE=1
    ```
 
 3. 实验结果记录`experiments`项目.
+
 4. 实验文件保存至`/data1/share/experiments/wenet`.
 
 ## 自学习平台
@@ -99,9 +100,9 @@ export NCCL_P2P_DISABLE=1
                                      data_dir wav_in_dir wav_out_dir sample_rate
                                      sample_width wav_channels textgrid_dir
                                      paser_conf_path textgrid_channel
-
+   
    利用本地的音频文件夹和标注文件文件夹生成wenet格式数据.
-
+   
    positional arguments:
       data_dir              生成的数据文件夹路径.
       wav_in_dir            输入音频文件夹路径.
@@ -112,7 +113,7 @@ export NCCL_P2P_DISABLE=1
       textgrid_dir          textgrid文件夹路径.
       paser_conf_path       textgird配置信息文件路径.
       textgrid_channel      textgrid文件对应声道信息.
-
+   
    optional arguments:
       -h, --help            show this help message and exit
       --need_rename NEED_RENAME
@@ -145,22 +146,25 @@ export NCCL_P2P_DISABLE=1
    ```
 
    - data_dir为第一步数据准备中生成的训练数据文件夹.
+
    - cpu训练: 可通过添加jemalloc优化内存增长问题.
      jemalloc添加方式: 在需要执行的脚本前添加jemalloc动态库，以声学调优为例:
+
      ```bash
      env LD_PRELOAD=/usr/local/lib/libjemalloc.so.2 ./local/self_learning/run.sh
      ```
 
 3. 模型导出
-  1. cpu推理模型包导出:
+
+  4. cpu推理模型包导出:
 
    ```bash
-   ./local/self_learning/export/export_cpu_models.sh
-      Usage: ./local/self_learning/export/export_cpu_models.sh [options] <in_dir> <model_dir> <out_dir>
-      in_dir: 训练完成的模型文件夹路径,需要包含train.yaml以及pytorch模型文件路径.
-      model_dir: 发版模型文件夹, 需包含conf/asr.yaml文件.
-      out_dir: 导出的模型推理文件夹路径.
-      --average_num: 默认5.
+./local/self_learning/export/export_cpu_models.sh
+   Usage: ./local/self_learning/export/export_cpu_models.sh [options] <in_dir> <model_dir> <out_dir>
+   in_dir: 训练完成的模型文件夹路径,需要包含train.yaml以及pytorch模型文件路径.
+   model_dir: 发版模型文件夹, 需包含conf/asr.yaml文件.
+   out_dir: 导出的模型推理文件夹路径.
+   --average_num: 默认5.
    ```
 
    - in_dir为第二步调优后的模型文件夹.
@@ -178,20 +182,21 @@ export NCCL_P2P_DISABLE=1
    python3 -m local.self_learning.format_text -h
    usage: format_text.py [-h] [--is_english] [--is_cantonese]
                       ori_text format_text dict_path
-
+   
    对原始文本进行处理, 以便后续构建语言模型.
-
+   
    positional arguments:
    ori_text        待处理文本.
    format_text     处理后的文本.
    dict_path       分词使用的词典路径, 发音词典或者asr模型文件夹下的lexicon.txt.
-
+   
    optional arguments:
    -h, --help      show this help message and exit
    --nj NJ         线程数, 默认16.
    --is_english    是否是英语, 默认否.
    --is_cantonese  是否是粤语, 默认否.
    ```
+
    - dict_path: `<model_dir>/self_learning/data/local/dict/lexicon.txt`
 
 2. 构造解码图
@@ -213,12 +218,40 @@ export NCCL_P2P_DISABLE=1
 ### K2码本蒸馏
 
 - 配置文件，可参照`conf/train_k2_distillation.yaml`：
+
   - `model_conf`下增添2个参数：
     - `num_codebooks`：码本维度，默认`8`，与量化器的`out_dim`一致
     - `codebook_weigth`：蒸馏损失权重，默认`0.1`
+    - `use_dynamic_chunk`：需设为false，否则无法对齐码本特征
   - `filter_conf` ：需与教师模型一致
   - `speed_perturb`：需设为`false`，否则帧数无法对齐
 
 - 注意事项
+
   - 码本损失是帧级损失，教师和学生模型的帧长需要保持一致（在线模型为25ms）
-  - 不同采样率的模型处理相同的音频时，可能出现1到2的帧数差异，下采样后时间维度差异最高为6，k2官方做法为截断，参照`concat_successive_codebook_indexes()`，位于`wenet/transformers/asr_model.py`
+
+  - 不同采样率的模型处理相同的音频时，可能出现1到2的帧数差异，下采样后时间维度差异最高为6，k2官方做法为截断，参照[align issue](https://code.in.wezhuiyi.com/speechAI/wenet/-/blob/yumingdong_k2_distillation/wenet/transformer/asr_model.py#L939)
+
+  - 安装multi_quantization包后，需要修改`JointCodebookLoss`类下的`forward()`通过torchscript编译，位于`multi_quantization/prediction.py`
+
+    ```python
+    class JointCodebookLoss(nn.Module):
+        ...
+        def forward(self,
+                    predictor: Tensor,
+                    codebook_indexes: Tensor) -> Tensor:    
+            return joint_codebook_loss(predictor=predictor, 
+                                        codebook_indexes=codebook_indexes,
+                                        linear1_weight=self.linear1.weight, 
+                                        linear1_bias=self.linear1.bias,
+                                        codebook_embedding_weight=self.codebook_embedding.weight,
+                                        linear2_weight=self.linear2_weight,
+                                        linear2b_weight=self.linear2b_weight,
+                                        linear2_bias=self.linear2_bias,
+                                        ignore_index=self.ignore_index,
+                                        is_joint=self.is_joint,
+                                        reduction=self.reduction)
+    ```
+
+    
+

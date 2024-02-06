@@ -84,7 +84,7 @@ class ASRModel(torch.nn.Module):
                 predictor_channels=encoder_output_size,
                 num_codebooks=num_codebooks,
                 is_joint=False,
-                checkpoint=False
+                checkpoint=False,
             )
             self.codebook_weight = codebook_weigth
 
