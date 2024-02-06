@@ -33,31 +33,56 @@ python local/filter_ckpt.py \
 
 ## Whisper-largev3 (conv1d2, full-parameter tuning) Result
 
+* Feature info: using log_mel_spectrogram feature, no cmvn
+* Training info: bf16, deepspeed stage1, activation checkpointing, batch dynamic12000, acc_grad 1, 8 * 3090 gpu, 30 epochs (about 16 hours), conf/finetune_whisper_largev3_onlyattn.yaml
+* Decoding info: ctc_weight 0.0, average_num 2
+* Git hash: TBD
+
+| decoding mode             | CER   |
+|---------------------------|-------|
+| attention decoder         | 2.57 % N=104765 C=102142 S=2529 D=94 I=74 |
+| ctc greedy search         | N/A |
+| ctc prefix beam search    | N/A |
+| attention rescoring       | N/A |
+
 * Feature info: using log_mel_spectrogram feature, no cmvn, no speed perturb
-* Training info: bf16, deepspeed stage1, activation checkpointing, batch dynamic12000, acc_grad 4, 8 * 3090 gpu, 40 epochs (about 14 hours)
+* Training info: bf16, deepspeed stage1, activation checkpointing, batch dynamic12000, acc_grad 1, 8 * 3090 gpu, 80 epochs (about 43 hours), conf/finetune_whisper_largev3.yaml
 * Decoding info: ctc_weight 0.3, average_num 5
 * Git hash: TBD
 
 | decoding mode             | CER   |
 |---------------------------|-------|
-| attention decoder         | 4.06  |
-| ctc greedy search         | 8.33  |
-| ctc prefix beam search    | 8.34  |
-| attention rescoring       | 6.49  |
+| attention decoder         | 2.78 % N=104765 C=101943 S=2711 D=111 I=87  |
+| ctc greedy search         | 6.89 % N=104765 C=98386 S=6210 D=169 I=839  |
+| ctc prefix beam search    | 6.86 % N=104765 C=98410 S=6194 D=161 I=830  |
+| attention rescoring       | 5.00 % N=104765 C=99771 S=4874 D=120 I=245  |
 
 ## Whisper-largev3 (conv2d4, full-parameter tuning) Result
 
+* Feature info: using log_mel_spectrogram feature, no cmvn
+* Training info: bf16, deepspeed stage1, activation checkpointing, batch dynamic12000, acc_grad 1, 8 * 3090 gpu, 30 epochs (about 14 hours), conf/finetune_whisper_largev3_conv2d4_onlyattn.yaml
+* Decoding info: ctc_weight 0.0, average_num 2
+* Git hash: TBD
+
+| decoding mode             | CER   |
+|---------------------------|-------|
+| attention decoder         | 2.63 % N=104765 C=102088 S=2579 D=98 I=79  |
+| ctc greedy search         | N/A |
+| ctc prefix beam search    | N/A |
+| attention rescoring       | N/A |
+
 * Feature info: using log_mel_spectrogram feature, no cmvn, no speed perturb
-* Training info: bf16, deepspeed stage1, activation checkpointing, batch dynamic12000, acc_grad 4, 8 * 3090 gpu, 40 epochs (about 10 hours)
+* Training info: bf16, deepspeed stage1, activation checkpointing, batch dynamic12000, acc_grad 1, 8 * 3090 gpu, 80 epochs (about 36 hours), conf/finetune_whisper_largev3_conv2d4.yaml
 * Decoding info: ctc_weight 0.3, average_num 5
 * Git hash: TBD
 
 | decoding mode             | CER   |
 |---------------------------|-------|
-| attention decoder         | 3.83  |
-| ctc greedy search         | 6.87  |
-| ctc prefix beam search    | 6.87  |
-| attention rescoring       | 5.33  |
+| attention decoder         | 3.38 % N=104765 C=101336 S=3305 D=124 I=111 |
+| ctc greedy search         | 7.43 % N=104765 C=97759 S=6813 D=193 I=779  |
+| ctc prefix beam search    | 7.42 % N=104765 C=97767 S=6806 D=192 I=777  |
+| attention rescoring       | 5.65 % N=104765 C=99100 S=5538 D=127 I=259  |
+
 # Frequently Asked Questions
 
 - Q: Why are there so many insertion errors in the decoding results of CTC?

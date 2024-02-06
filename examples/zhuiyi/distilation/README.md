@@ -16,7 +16,8 @@
 
      ```bash
      ./save_embedding.sh
-         --checkpoint: wenet模型检查点路径
+         --checkpoint: 教师模型检查点路径
+         --encoder_type 教师模型类型 [wenet, huggingface]
          --save_path: h5文件保存路径
          --train_data: data.list文件路径
          --config: 配置文件路径
@@ -40,7 +41,8 @@
 
   ```bash
   ./train_quantizer_offline.sh
-  	--checkpoint: wenet模型检查点路径
+  	--checkpoint: 教师模型检查点路径
+  	--encoder_type 教师模型类型 [wenet, huggingface]
   	--train_data: data.list文件路径
   	--save_path: 量化器保存路径
   	--quantizer_batch_size: 每步训练帧数，默认512
@@ -55,12 +57,13 @@
 
 ```bash
 ./save_codebook.sh
-    --checkpoint: wenet模型检查点路径
+    --checkpoint: 教师模型检查点路径
+    --encoder_type 教师模型类型 [wenet, huggingface]
     --save_path: h5文件保存路径
     --quantizer_path: 量化器检查点保存路径
     --quantizer_in_dim: 预训练模型特征维度，默认1280
     --quantizer_out_dim: 量化器输出维度，即码本维度，默认8
-    --quantizer_codebook_size: 码本分类范围，默认为2的<码本维度>次幂，即256
+    --quantizer_codebook_size: 码本分类范围，默认为2的<量化器输出维度>次幂，即256
     --train_data: data.list文件路径
     --config: 配置文件路径
     --save_codebook: 激活参数，激活时保存码本而不是预训练模型输出张量
