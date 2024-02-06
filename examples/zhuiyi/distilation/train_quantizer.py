@@ -1,7 +1,7 @@
 from save_h5 import get_args_configs
 from wenet.utils.train_utils import init_dataset_and_dataloader
 from wenet.utils.init_tokenizer import init_tokenizer
-from get_encoder import get_encoder_from_wenet
+from get_encoder import get_encoder
 
 import multi_quantization as quantization
 import torch
@@ -36,17 +36,15 @@ def main():
         tokenizer = init_tokenizer(configs)
         _, _, train_data_loader, _ = init_dataset_and_dataloader(args, configs, tokenizer)
         
-        encoder = get_encoder_from_wenet(args, configs)
+        encoder = get_encoder(args, configs)
         encoder = encoder.to(device).to(dtype)
         
         total_tensor = []
         cnt = 0
         with torch.no_grad():
             for batch_idx, batch_dict in enumerate(train_data_loader):
-                xs = batch_dict['feats'].to(device).to(dtype)
-                xs_lens = batch_dict['feats_lengths'].to(device).to(dtype)
-                encoder_embedding = encoder(xs, xs_lens)[0]  # (1, T, D)
-                total_tensor.append(encoder_embedding.squeeze(0))  # (T, D)
+                encoder_embedding = encoder(batch_dict, device, dtype)  # (1, T, D)
+                total_tensor.append(encoder_embedding.squeeze(0))       # (T, D)
                 cnt += 1
                 if cnt > args.num_audio:
                     break
@@ -71,6 +69,7 @@ def main():
             cur_offset += B
             yield data[start:end, :].to(device).to(dtype=torch.float)
 
+    logging.info("Start Quantizer Training")
     for x in minibatch_generator(total_tensor, repeat=True):
         trainer.step(x)
         if trainer.done():

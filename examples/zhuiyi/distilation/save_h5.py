@@ -1,7 +1,7 @@
 from multi_quantization import Quantizer
 from wenet.utils.train_utils import init_dataset_and_dataloader
 from wenet.utils.init_tokenizer import init_tokenizer
-from get_encoder import get_encoder_from_wenet
+from get_encoder import get_encoder
 
 import torch
 import yaml
@@ -15,9 +15,11 @@ import numpy as np
 若生成蒸馏码本，必须通过 --quantizer_path 导入量化器
 '''
 
+
 def get_args_configs():
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint',              type=str)
+    parser.add_argument('--encoder_type',            type=str)
     parser.add_argument('--save_path',               type=str, required=True)
     parser.add_argument('--train_data',              type=str)
     parser.add_argument('--quantizer_path',          type=str, default='')
@@ -59,7 +61,7 @@ def main():
     tokenizer = init_tokenizer(configs)
     _, _, train_data_loader, _ = init_dataset_and_dataloader(args, configs, tokenizer)
     
-    encoder = get_encoder_from_wenet(args, configs)
+    encoder = get_encoder(args, configs)
     encoder = encoder.to(device).to(dtype)
     
     if args.save_codebook:
@@ -78,10 +80,8 @@ def main():
     with h5py.File(args.save_path, 'w') as hf:
         with torch.no_grad():
             for batch_idx, batch_dict in enumerate(train_data_loader):
-                xs = batch_dict['feats'].to(device).to(dtype)
                 idx = batch_dict['keys'][0]
-                xs_lens = batch_dict['feats_lengths'].to(device).to(dtype)
-                encoder_embedding = encoder(xs, xs_lens)[0]
+                encoder_embedding = encoder(batch_dict, device, dtype)
                 info = f'{idx} embedding: {encoder_embedding.shape} '
                 
                 if quantizer is None:
