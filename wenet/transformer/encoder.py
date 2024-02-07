@@ -141,7 +141,7 @@ class BaseEncoder(torch.nn.Module):
         xs_lens: torch.Tensor,
         decoding_chunk_size: int = 0,
         num_decoding_left_chunks: int = -1,
-        layer = -1,
+        middle_layer = -1,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Embed positions in tensor.
 
@@ -174,14 +174,14 @@ class BaseEncoder(torch.nn.Module):
                                               decoding_chunk_size,
                                               self.static_chunk_size,
                                               num_decoding_left_chunks)
-        if layer <= 0:
+        if middle_layer <= 0:
             for layer in self.encoders:
                 xs, chunk_masks, _, _ = layer(xs, chunk_masks, pos_emb, mask_pad)
         else:
             cnt = 1
             for layer in self.encoders:
                 xs, chunk_masks, _, _ = layer(xs, chunk_masks, pos_emb, mask_pad)
-                if cnt != layer:
+                if cnt != middle_layer:
                     cnt += 1
                 else:
                     break

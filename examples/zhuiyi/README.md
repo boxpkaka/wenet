@@ -219,18 +219,21 @@ export NCCL_P2P_DISABLE=1
 
 - 配置文件，可参照`conf/train_k2_distillation.yaml`：
 
-  - `model_conf`下增添2个参数：
+  - `model_conf`下增添参数：
     - `num_codebooks`：码本维度，默认`8`，与量化器的`out_dim`一致
     - `codebook_weigth`：蒸馏损失权重，默认`0.1`
-    - `use_dynamic_chunk`：需设为false，否则无法对齐码本特征
-  - `filter_conf` ：需与教师模型一致
-  - `speed_perturb`：需设为`false`，否则帧数无法对齐
+    - `frames_ratio`：教师与学生模型的帧率比例，如hubert帧率为线上模型的2倍，则为2
+    - `middle_layer`：中间层序号，指参与蒸馏的学生模型层，小于1或大于总层数则使用最后一层的输出
+  - 需留意的配置参数：
+    - `use_dynamic_chunk`：需与教师模型一致，如wenet-whisper为false
+    - `filter_conf` ：需与教师模型一致
+    - `speed_perturb`：需设为`false`，否则帧数无法对齐
 
 - 注意事项
 
-  - 码本损失是帧级损失，教师和学生模型的帧长需要保持一致（在线模型为25ms）
+  - 码本损失是帧级损失，教师和学生模型的帧率需要保持一致（在线模型为25 frames/s）
 
-  - 不同采样率的模型处理相同的音频时，可能出现1到2的帧数差异，下采样后时间维度差异最高为6，k2官方做法为截断，参照[align issue](https://code.in.wezhuiyi.com/speechAI/wenet/-/blob/yumingdong_k2_distillation/wenet/transformer/asr_model.py#L939)
+  - 不同采样率，相同帧长帧移的模型处理同一音频，下采样后时间维度差异最高为1，k2官方做法为截断，参照[align issue](https://code.in.wezhuiyi.com/speechAI/wenet/-/blob/yumingdong_k2_distillation/wenet/transformer/asr_model.py#L939)
 
   - 安装multi_quantization包后，需要修改`JointCodebookLoss`类下的`forward()`通过torchscript编译，位于`multi_quantization/prediction.py`
 
@@ -252,6 +255,10 @@ export NCCL_P2P_DISABLE=1
                                         is_joint=self.is_joint,
                                         reduction=self.reduction)
     ```
+
+    
+
+
 
     
 

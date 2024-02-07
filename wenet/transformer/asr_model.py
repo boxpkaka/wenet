@@ -58,7 +58,7 @@ class ASRModel(torch.nn.Module):
         num_codebooks: int = 0,
         codebook_weigth: float = 0.1,
         frames_ratio: int = 1,
-        encoder_layer: int = -1
+        middle_layer: int = -1
     ):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
 
@@ -92,7 +92,7 @@ class ASRModel(torch.nn.Module):
             )
             self.codebook_weight = codebook_weigth
             self.frames_ratio = frames_ratio
-            self.encoder_layer = encoder_layer
+            self.middle_layer = middle_layer
             
     def forward(
         self,
@@ -136,9 +136,9 @@ class ASRModel(torch.nn.Module):
         if hasattr(self, "codebook_loss_net"):
             if codebook_indexes is not None:
                 # whether use middle layer ouput of student model
-                if 0 < self.encoder_layer < self.encoder.num_blocks():
+                if 0 < self.middle_layer < self.encoder.num_blocks():
                     distil_encoder_out = self.encoder(speech, speech_lengths,
-                                                      layer=self.encoder_layer)
+                                                      middle_layer=self.middle_layer)
                 else:
                     distil_encoder_out = encoder_out
                     
