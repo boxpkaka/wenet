@@ -39,13 +39,13 @@ train_set=train
 # 2. Whisper largev3 with randomly init conv2d4
 #        train_config=conf/finetune_whisper_largev3_conv2d4.yaml
 #        checkpoint=exp/whisper/large-v3/wenet_whisper.remove-subsample.pt
-train_config=/data1/yumingdong/offical/wenet/examples/aishell/whisper/conf/finetune_whisper_largev3_conv2d4.yaml
+train_config=conf/finetune_whisper_largev3_conv2d4_onlyattn.yaml
 checkpoint=/data1/yumingdong/model/wenet_whisper/whisper-large-v3/wenet_whisper_remove_conv.pt
-dir=exp/whisper-large-v3_multi_lang_yue_100h+zh_100h_ctc_0_conv2d4
-train_data=/data2/yumingdong/data/raw/wenet_data_list/yue100+zh100/data.list
+dir=exp/whisper-large-v3_multi_lang_yue_50h+zh_50h_conv2d4_onlyattn
+train_data=/data2/yumingdong/data/raw/wenet_data_list/yue_50h+zh_50h_2/data.list
 cv_data=/data2/yumingdong/data/raw/wenet_data_list/test_1000Cantonese/data.list
 
-tensorboard_dir=tensorboard
+tensorboard_dir=$dir/tensorboard
 num_workers=16
 prefetch=500
 
@@ -65,7 +65,7 @@ deepspeed_save_states="model+optimizer"
 . tools/parse_options.sh || exit 1;
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
-  mkdir -p $dir
+  mkdir -p $tensorboard_dir
   num_gpus=$(echo $CUDA_VISIBLE_DEVICES | awk -F "," '{print NF}')
   # Use "nccl" if it works, otherwise use "gloo"
   # NOTE(xcsong): deepspeed fails with gloo, see

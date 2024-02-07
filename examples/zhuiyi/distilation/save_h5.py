@@ -20,6 +20,7 @@ def get_args_configs():
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint',              type=str)
     parser.add_argument('--encoder_type',            type=str)
+    parser.add_argument('--middle_layer',            type=int, default=-1)
     parser.add_argument('--save_path',               type=str, required=True)
     parser.add_argument('--train_data',              type=str)
     parser.add_argument('--quantizer_path',          type=str, default='')
@@ -32,7 +33,8 @@ def get_args_configs():
     parser.add_argument('--config',                  type=str, default='./conf/batchsize_1.yaml')
     parser.add_argument('--gpu',                     type=str, default='0')
     parser.add_argument('--save_codebook',           action='store_true')
-    parser.add_argument('--num_audio',               type=int, default=2000)
+    parser.add_argument('--num_audio',               type=int, default=1000)
+    
     parser.add_argument('--data_type',               type=str, default='raw')
     parser.add_argument('--cv_data',                 type=str, default='/data2/yumingdong/data/raw/wenet/test_1000Cantonese/data.list')
     parser.add_argument('--pin_memory',              type=bool, default=False)
@@ -81,7 +83,7 @@ def main():
         with torch.no_grad():
             for batch_idx, batch_dict in enumerate(train_data_loader):
                 idx = batch_dict['keys'][0]
-                encoder_embedding = encoder(batch_dict, device, dtype)
+                encoder_embedding = encoder(batch_dict, device, dtype, middle_layer=args.middle_layer)
                 info = f'{idx} embedding: {encoder_embedding.shape} '
                 
                 if quantizer is None:

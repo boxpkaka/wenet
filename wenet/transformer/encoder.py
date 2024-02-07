@@ -113,6 +113,7 @@ class BaseEncoder(torch.nn.Module):
         xs_lens: torch.Tensor,
         decoding_chunk_size: int = 0,
         num_decoding_left_chunks: int = -1,
+        middle_layer: int = -1
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Embed positions in tensor.
 
@@ -153,7 +154,7 @@ class BaseEncoder(torch.nn.Module):
             xs = self.forward_layers_checkpointed(xs, chunk_masks, pos_emb,
                                                   mask_pad)
         else:
-            xs = self.forward_layers(xs, chunk_masks, pos_emb, mask_pad)
+            xs = self.forward_layers(xs, chunk_masks, pos_emb, mask_pad, middle_layer)
         if self.normalize_before:
             xs = self.after_norm(xs)
         # Here we assume the mask is not changed in encoder layers, so just
@@ -163,9 +164,19 @@ class BaseEncoder(torch.nn.Module):
 
     def forward_layers(self, xs: torch.Tensor, chunk_masks: torch.Tensor,
                        pos_emb: torch.Tensor,
-                       mask_pad: torch.Tensor) -> torch.Tensor:
-        for layer in self.encoders:
-            xs, chunk_masks, _, _ = layer(xs, chunk_masks, pos_emb, mask_pad)
+                       mask_pad: torch.Tensor,
+                       middle_layer=-1) -> torch.Tensor:
+        if middle_layer <= 0:
+            for layer in self.encoders:
+                xs, chunk_masks, _, _ = layer(xs, chunk_masks, pos_emb, mask_pad)
+        else:
+            cnt = 1
+            for layer in self.encoders:
+                xs, chunk_masks, _, _ = layer(xs, chunk_masks, pos_emb, mask_pad)
+                if cnt != middle_layer:
+                    cnt += 1
+                else:
+                    break
         return xs
 
     @torch.jit.ignore(drop=True)

@@ -14,7 +14,7 @@ import logging
 online:
 - 直接用预训练模型产生向量并训练量化器
 offline:
-- 从本地读取h5文件中的向量
+-读取本地h5文件中的向量训练量化器
 
 '''
 
@@ -43,13 +43,14 @@ def main():
         cnt = 0
         with torch.no_grad():
             for batch_idx, batch_dict in enumerate(train_data_loader):
-                encoder_embedding = encoder(batch_dict, device, dtype)  # (1, T, D)
-                total_tensor.append(encoder_embedding.squeeze(0))       # (T, D)
+                encoder_embedding = encoder(batch_dict, device, dtype, 
+                                            middle_layer=args.middle_layer)  # (1, T, D)
+                total_tensor.append(encoder_embedding.squeeze(0))            # (T, D)
                 cnt += 1
                 if cnt > args.num_audio:
                     break
         
-        total_tensor = torch.cat(total_tensor, dim=0)    # (*, D)
+        total_tensor = torch.cat(total_tensor, dim=0)                        # (Total frames, D)
         logging.info(f'Total frames: {total_tensor.shape[0]}')
         # clean cuda memory
         del encoder
