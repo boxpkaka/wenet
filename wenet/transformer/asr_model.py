@@ -56,7 +56,8 @@ class ASRModel(torch.nn.Module):
         lsm_weight: float = 0.0,
         length_normalized_loss: bool = False,
         num_codebooks: int = 0,
-        codebook_weigth: float = 0.5
+        codebook_weigth: float = 0.1,
+        frames_ratio: float = 1.0
     ):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
 
@@ -87,6 +88,7 @@ class ASRModel(torch.nn.Module):
                 checkpoint=False,
             )
             self.codebook_weight = codebook_weigth
+            self.frames_ratio = frames_ratio
 
     def forward(
         self,
@@ -131,7 +133,7 @@ class ASRModel(torch.nn.Module):
             if codebook_indexes is not None:
                 if codebook_indexes.shape[1] != encoder_out.shape[1]:
                     codebook_indexes = self.concat_successive_codebook_indexes(
-                        encoder_out, codebook_indexes
+                        encoder_out, codebook_indexes, self.frames_ratio
                     )
                 loss_codebook = self.codebook_loss_net(
                     encoder_out, codebook_indexes
@@ -935,7 +937,7 @@ class ASRModel(torch.nn.Module):
         return decoder_out, r_decoder_out
 
     @staticmethod
-    def concat_successive_codebook_indexes(middle_layer_output, codebook_indexes):
+    def concat_successive_codebook_indexes(middle_layer_output, codebook_indexes, frames_ratio):
         # Output rate of hubert is 50 frames per second,
         # while that of current encoder is 25.
         # Following code handling two issues:
@@ -949,14 +951,17 @@ class ASRModel(torch.nn.Module):
         #   codebook loss is a frame-wise loss, to enalbe 25 frames studnet output
         #   learns from 50 frames teacher output, two successive frames of teacher model
         #   output is concatenated together.
+        
+        # NOTE(yumingdong): 
+        # frames_ratio: teacher ouput frames / student ouput frames
+
         t_expected = middle_layer_output.shape[1]
         N, T, C = codebook_indexes.shape
 
         # Handling issue 1.
         if T >= t_expected:
-            codebook_indexes = codebook_indexes[:, : t_expected, :]
+            codebook_indexes = codebook_indexes[:, : t_expected * frames_ratio, :]
         # Handling issue 2. 
-        # NOTE(Yumingong): Since student and teacher outputs are the same 25 frames, ignore this issue
-        # codebook_indexes = codebook_indexes.reshape(N, t_expected, C * 2)
-        # assert middle_layer_output.shape[1] == codebook_indexes.shape[1]
+        codebook_indexes = codebook_indexes.reshape(N, t_expected, C * frames_ratio)
+        assert middle_layer_output.shape[1] == codebook_indexes.shape[1]
         return codebook_indexes

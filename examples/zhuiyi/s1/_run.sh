@@ -26,7 +26,7 @@ average_num=5
 bpe_model=
 gpus="7"
 lr=0.0004
-batch_size=1
+batch_size=16
 epoch=20
 warmup_steps=500
 accum_grad=2
@@ -53,10 +53,10 @@ cpus=-1
 export CUDA_VISIBLE_DEVICES=$gpus
 data_dir=/data2/yumingdong/data/raw/wenet_data_list/yue_50h+zh_50h_2
 model_dir=/data1/yumingdong/model/wenet/asr_model_v4.5.0/
-out_dir='./exp/test/'
+out_dir='./exp/baseline_20240207/'
 tensorboard_dir=$out_dir/tensorboard
 
-codebook_path=/data1/yumingdong/offical/wenet/examples/zhuiyi/distilation/codebook/yue50+zh50-model_zh_yue50+zh50.h5
+# codebook_path=/data1/yumingdong/official/wenet/examples/zhuiyi/distilation/codebook/whisper_largev3_conv2d4_zh_yue50+zh50.h5
 
 self_learning=$model_dir/self_learning
 train_config=$self_learning/exp/train.yaml
