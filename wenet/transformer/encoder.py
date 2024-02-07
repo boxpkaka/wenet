@@ -93,6 +93,7 @@ class BaseEncoder(torch.nn.Module):
         assert check_argument_types()
         super().__init__()
         self._output_size = output_size
+        self._num_blocks = num_blocks
 
         if pos_enc_layer_type == "abs_pos":
             pos_enc_class = PositionalEncoding
@@ -130,6 +131,9 @@ class BaseEncoder(torch.nn.Module):
 
     def output_size(self) -> int:
         return self._output_size
+    
+    def num_blocks(self) -> int:
+        return self._num_blocks
 
     def forward(
         self,
@@ -137,6 +141,7 @@ class BaseEncoder(torch.nn.Module):
         xs_lens: torch.Tensor,
         decoding_chunk_size: int = 0,
         num_decoding_left_chunks: int = -1,
+        layer = -1,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Embed positions in tensor.
 
@@ -169,8 +174,17 @@ class BaseEncoder(torch.nn.Module):
                                               decoding_chunk_size,
                                               self.static_chunk_size,
                                               num_decoding_left_chunks)
-        for layer in self.encoders:
-            xs, chunk_masks, _, _ = layer(xs, chunk_masks, pos_emb, mask_pad)
+        if layer <= 0:
+            for layer in self.encoders:
+                xs, chunk_masks, _, _ = layer(xs, chunk_masks, pos_emb, mask_pad)
+        else:
+            cnt = 1
+            for layer in self.encoders:
+                xs, chunk_masks, _, _ = layer(xs, chunk_masks, pos_emb, mask_pad)
+                if cnt != layer:
+                    cnt += 1
+                else:
+                    break
         if self.normalize_before:
             xs = self.after_norm(xs)
         # Here we assume the mask is not changed in encoder layers, so just

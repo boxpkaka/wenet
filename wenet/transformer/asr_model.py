@@ -57,7 +57,8 @@ class ASRModel(torch.nn.Module):
         length_normalized_loss: bool = False,
         num_codebooks: int = 0,
         codebook_weigth: float = 0.1,
-        frames_ratio: float = 1.0
+        frames_ratio: int = 1,
+        encoder_layer: int = -1
     ):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
 
@@ -79,6 +80,8 @@ class ASRModel(torch.nn.Module):
             smoothing=lsm_weight,
             normalize_length=length_normalized_loss,
         )
+        
+        # k2 distillation
         if num_codebooks > 0:
             encoder_output_size = self.encoder.output_size()
             self.codebook_loss_net = JointCodebookLoss(
@@ -89,7 +92,8 @@ class ASRModel(torch.nn.Module):
             )
             self.codebook_weight = codebook_weigth
             self.frames_ratio = frames_ratio
-
+            self.encoder_layer = encoder_layer
+            
     def forward(
         self,
         speech: torch.Tensor,
@@ -131,12 +135,20 @@ class ASRModel(torch.nn.Module):
         # 2c. Distillation branch
         if hasattr(self, "codebook_loss_net"):
             if codebook_indexes is not None:
-                if codebook_indexes.shape[1] != encoder_out.shape[1]:
+                # whether use middle layer ouput of student model
+                if 0 < self.encoder_layer < self.encoder.num_blocks():
+                    distil_encoder_out = self.encoder(speech, speech_lengths,
+                                                      layer=self.encoder_layer)
+                else:
+                    distil_encoder_out = encoder_out
+                    
+                if codebook_indexes.shape[1] != distil_encoder_out.shape[1]:
                     codebook_indexes = self.concat_successive_codebook_indexes(
-                        encoder_out, codebook_indexes, self.frames_ratio
+                        distil_encoder_out, codebook_indexes, self.frames_ratio
                     )
+                    
                 loss_codebook = self.codebook_loss_net(
-                    encoder_out, codebook_indexes
+                    distil_encoder_out, codebook_indexes
                 )
             else:
                 loss_codebook = None
